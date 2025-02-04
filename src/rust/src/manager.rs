@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use crate::{embeddings::EmbeddingModel, nlp::Language, utils::gen_random_string};
 use serde::{Deserialize, Serialize};
 
+static RAND_API_KEY_LENGTH: usize = 32;
+
 #[derive(Debug, Clone, Serialize)]
 pub struct OramaCoreManager {
     url: String,
@@ -30,8 +32,8 @@ impl Default for NewCollectionParams {
         NewCollectionParams {
             id: String::new(),
             description: None,
-            write_api_key: gen_random_string(32),
-            read_api_key: gen_random_string(32),
+            write_api_key: gen_random_string(RAND_API_KEY_LENGTH),
+            read_api_key: gen_random_string(RAND_API_KEY_LENGTH),
             embeddings: None,
             language: Some(Language::English),
         }
@@ -86,6 +88,11 @@ impl OramaCoreManager {
         &self,
         collection_config: NewCollectionParams,
     ) -> Result<NewCollectionResponse, Box<dyn std::error::Error>> {
+        if collection_config.id.is_empty() {
+            // @todo: we may want to validate it as well.
+            return Err("Please provide a collection ID".into());
+        }
+
         let url = format!("{}/v1/collections/create", self.url);
         let body = serde_json::to_string(&collection_config).unwrap();
 
@@ -132,14 +139,63 @@ impl OramaCoreManager {
 
         Ok(response)
     }
+}
 
-    pub fn delete_collection(&self, id: String) -> Result<(), Box<dyn std::error::Error>> {
-        let url = format!("{}/v1/collections/{}/delete", self.url, id);
-        let _ = reqwest::blocking::Client::new()
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", self.master_api_key))
-            .send()?;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::nlp::Language;
 
-        Ok(())
+    fn get_manager() -> OramaCoreManager {
+        OramaCoreManager::new(
+            "http://localhost:8080".to_string(),
+            "my-master-api-key".to_string(),
+        )
+    }
+
+    #[test]
+    fn test_create_collection_with_defaults() {
+        let manager = get_manager();
+        let id = gen_random_string(10);
+
+        let collection_config = NewCollectionParams {
+            id: id.clone(),
+            ..Default::default()
+        };
+
+        let response = manager.create_collection(collection_config).unwrap();
+
+        assert_eq!(response.id, id);
+        assert_eq!(response.description, None);
+        assert_eq!(response.read_api_key.len(), RAND_API_KEY_LENGTH);
+        assert_eq!(response.write_api_key.len(), RAND_API_KEY_LENGTH);
+    }
+
+    #[test]
+    fn test_create_collection_with_config() {
+        let manager = get_manager();
+        let id = gen_random_string(10);
+
+        let collection_config = NewCollectionParams {
+            id: id.clone(),
+            description: Some("My random description".to_string()),
+            embeddings: Some(EmbeddingsConfig {
+                document_fields: Some(vec!["title".to_string(), "content".to_string()]),
+                model: Some(EmbeddingModel::E5MultilangualLarge),
+            }),
+            language: Some(Language::Italian),
+            read_api_key: "read".to_string(),
+            write_api_key: "write".to_string(),
+        };
+
+        let response = manager.create_collection(collection_config).unwrap();
+
+        assert_eq!(response.id, id);
+        assert_eq!(
+            response.description,
+            Some("My random description".to_string())
+        );
+        assert_eq!(response.read_api_key, "read".to_string());
+        assert_eq!(response.write_api_key, "write".to_string());
     }
 }
