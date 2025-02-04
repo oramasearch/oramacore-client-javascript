@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{embeddings::EmbeddingModel, nlp::Language, utils::gen_random_string};
+use crate::internal::{embeddings::EmbeddingModel, nlp::Language, utils::gen_random_string};
 use serde::{Deserialize, Serialize};
 
 static RAND_API_KEY_LENGTH: usize = 32;
@@ -144,7 +144,7 @@ impl OramaCoreManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nlp::Language;
+    use crate::internal::nlp::Language;
 
     fn get_manager() -> OramaCoreManager {
         OramaCoreManager::new(
