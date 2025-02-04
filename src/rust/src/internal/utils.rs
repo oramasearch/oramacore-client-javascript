@@ -1,4 +1,5 @@
 use rand::{distr::Alphanumeric, Rng};
+use serde::Serialize;
 
 pub fn gen_random_string(len: usize) -> String {
     rand::rng()

@@ -13,12 +13,12 @@ pub struct OramaCoreManager {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NewCollectionParams {
-    id: String,
-    description: Option<String>,
-    write_api_key: String,
-    read_api_key: String,
-    language: Option<Language>,
-    embeddings: Option<EmbeddingsConfig>,
+    pub id: String,
+    pub description: Option<String>,
+    pub write_api_key: String,
+    pub read_api_key: String,
+    pub language: Option<Language>,
+    pub embeddings: Option<EmbeddingsConfig>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -137,6 +137,8 @@ impl OramaCoreManager {
 
         let response: ExistingCollection = serde_json::from_str(&response)?;
 
+        dbg!(response.clone());
+
         Ok(response)
     }
 }
@@ -197,5 +199,23 @@ mod tests {
         );
         assert_eq!(response.read_api_key, "read".to_string());
         assert_eq!(response.write_api_key, "write".to_string());
+    }
+
+    #[test]
+    fn test_list_collections() {
+        let manager = get_manager();
+        let collections = manager.list_collections().unwrap();
+
+        assert_eq!(collections.len() > 1, true);
+    }
+
+    #[test]
+    fn test_get_collection() {
+        let manager = get_manager();
+        let collections = manager.list_collections().unwrap();
+
+        let collection = manager.get_collection(collections[0].id.clone()).unwrap();
+
+        assert_eq!(collection.id, collections[0].id);
     }
 }
