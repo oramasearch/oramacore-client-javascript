@@ -14,9 +14,9 @@ type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
 type RequestConfig = {
   url: string
-  body: AnyObject
   method: Method
   securityLevel: SecurityLevel
+  body?: AnyObject
 }
 
 export class OramaInterface {
@@ -43,21 +43,30 @@ export class OramaInterface {
       headers.append('Authorization', `Bearer ${APIKey}`)
     }
 
+    if (config.method === 'GET' && config.securityLevel === 'master') {
+      const APIKey = this.getAPIKey(config.securityLevel)
+      headers.append('Authorization', `Bearer ${APIKey}`)
+    }
+
     if (config.method === 'GET') {
       remoteURL.searchParams.append('api-key', this.getAPIKey(config.securityLevel))
     }
 
-    const request = await fetch(remoteURL.toString(), {
+    const requestObject: Partial<RequestInit> = {
       method: config.method,
-      body: JSON.stringify(config.body),
       headers
-    })
+    }
+
+    if (config.body) {
+      requestObject.body = JSON.stringify(config.body)
+    }
+
+    const request = await fetch(remoteURL.toString(), requestObject)
 
     if (!request.ok) {
       throw new Error(
         dedent(`
-                Request failed with status ${request.status}:
-
+                Request to "${config.url}" failed with status ${request.status}:
                 ${await request.text()}
             `)
       )

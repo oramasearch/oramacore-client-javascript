@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "JavaScript client for OramaCore",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "fmt": "npx @biomejs/biome format --write src"

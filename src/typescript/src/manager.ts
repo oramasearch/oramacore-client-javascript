@@ -1,4 +1,4 @@
-import type { Nullable, Language, EmbeddingsConfig, Hook } from './lib/types'
+import type { Nullable, Language, EmbeddingsConfig, Hook, AnyObject } from './lib/types'
 import { OramaInterface } from './common'
 import { createRandomString } from './lib/utils'
 
@@ -10,10 +10,10 @@ type OramaCoreManagerConfig = {
 type CreateCollectionParams = {
   id: string
   description: Nullable<string>
-  writeAPIKey: Nullable<string>
-  readAPIKey: Nullable<string>
-  language: Nullable<Language>
-  embeddings: Nullable<EmbeddingsConfig>
+  writeAPIKey?: Nullable<string>
+  readAPIKey?: Nullable<string>
+  language?: Nullable<Language>
+  embeddings?: Nullable<EmbeddingsConfig>
 }
 
 type NewCollectionResponse = {
@@ -33,6 +33,13 @@ type NewHookresponse = {
   hookID: string
   collectionID: string
   code: string
+}
+
+type GetCollectionsResponse = {
+  id: string
+  description: Nullable<string>
+  document_count: number
+  fields: AnyObject
 }
 
 export class OramaCoreManager {
@@ -61,7 +68,7 @@ export class OramaCoreManager {
     }
 
     await this.oramaInterface.request({
-      url: '/v1/collections',
+      url: '/v1/collections/create',
       body,
       method: 'POST',
       securityLevel: 'master'
@@ -73,6 +80,22 @@ export class OramaCoreManager {
       writeAPIKey: body.write_api_key,
       readonlyAPIKey: body.read_api_key
     }
+  }
+
+  public listCollections(): Promise<GetCollectionsResponse[]> {
+    return this.oramaInterface.request<GetCollectionsResponse[]>({
+      url: '/v1/collections',
+      method: 'GET',
+      securityLevel: 'master'
+    })
+  }
+
+  public getCollection(collectionID: string): Promise<GetCollectionsResponse> {
+    return this.oramaInterface.request<GetCollectionsResponse>({
+      url: `/v1/collections/${collectionID}`,
+      method: 'GET',
+      securityLevel: 'master'
+    })
   }
 
   public async addHook(config: AddHookConfig): Promise<NewHookresponse> {
