@@ -1,4 +1,5 @@
 import { build, emptyDir } from 'jsr:@deno/dnt'
+import denojson from './deno.json' with { type: 'json' }
 
 const outDir = './.npm'
 
@@ -13,8 +14,8 @@ await build({
   scriptModule: 'cjs',
   typeCheck: 'both',
   package: {
-    name: '@orama/core',
-    version: '0.0.1',
+    name: denojson.name,
+    version: denojson.version,
     description: 'JavaScript and TypeScript client for OramaCore',
     license: 'AGPL-3.0',
     author: {
@@ -29,6 +30,9 @@ await build({
       url: 'https://github.com/oramasearch/oramacore/repo/issues',
     },
   },
+  testPattern: '**/*.test.{ts,js}',
+  rootTestDir: './tests',
+  test: false,
   postBuild() {
     Deno.copyFileSync('./LICENSE.md', `${outDir}/LICENSE.md`)
     Deno.copyFileSync('./README.md', `${outDir}/README.md`)

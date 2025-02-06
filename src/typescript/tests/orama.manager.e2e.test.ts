@@ -1,6 +1,6 @@
 import { assertEquals } from 'jsr:@std/assert'
-import { OramaCoreManager } from '../index.ts'
-import { createRandomString } from '../lib/utils.ts'
+import { OramaCoreManager } from '../src/index.ts'
+import { createRandomString } from '../src/lib/utils.ts'
 
 const manager = new OramaCoreManager({
   url: 'http://localhost:8080',
