@@ -1,6 +1,6 @@
 export type Nullable<T> = T | null
 
-export type AnyObject<T = any> = Record<string, T>
+export type AnyObject<T = unknown> = Record<string, T>
 
 export type Language =
   | 'arabic'

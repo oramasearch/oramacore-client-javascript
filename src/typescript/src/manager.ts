@@ -1,6 +1,6 @@
-import type { Nullable, Language, EmbeddingsConfig, AnyObject } from './lib/types'
-import { OramaInterface } from './common'
-import { createRandomString } from './lib/utils'
+import type { AnyObject, EmbeddingsConfig, Language, Nullable } from './lib/types.ts'
+import { OramaInterface } from './common.ts'
+import { createRandomString } from './lib/utils.ts'
 
 type OramaCoreManagerConfig = {
   url: string
@@ -42,7 +42,7 @@ export class OramaCoreManager {
       baseURL: this.url,
       masterAPIKey: this.masterAPIKey,
       writeAPIKey: this.masterAPIKey,
-      readAPIKey: this.masterAPIKey
+      readAPIKey: this.masterAPIKey,
     })
   }
 
@@ -52,21 +52,21 @@ export class OramaCoreManager {
       description: config.description,
       write_api_key: config.writeAPIKey ?? createRandomString(32),
       read_api_key: config.readAPIKey ?? createRandomString(32),
-      embeddings: config.embeddings
+      embeddings: config.embeddings,
     }
 
     await this.oramaInterface.request({
       url: '/v1/collections/create',
       body,
       method: 'POST',
-      securityLevel: 'master'
+      securityLevel: 'master',
     })
 
     return {
       id: body.id,
       description: body.description,
       writeAPIKey: body.write_api_key,
-      readonlyAPIKey: body.read_api_key
+      readonlyAPIKey: body.read_api_key,
     }
   }
 
@@ -74,7 +74,7 @@ export class OramaCoreManager {
     return this.oramaInterface.request<GetCollectionsResponse[]>({
       url: '/v1/collections',
       method: 'GET',
-      securityLevel: 'master'
+      securityLevel: 'master',
     })
   }
 
@@ -82,7 +82,7 @@ export class OramaCoreManager {
     return this.oramaInterface.request<GetCollectionsResponse>({
       url: `/v1/collections/${collectionID}`,
       method: 'GET',
-      securityLevel: 'master'
+      securityLevel: 'master',
     })
   }
 }

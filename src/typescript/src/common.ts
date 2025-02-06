@@ -1,5 +1,5 @@
-import type { Nullable, AnyObject } from './lib/types'
-import dedent from 'dedent'
+import type { AnyObject, Nullable } from './lib/types.ts'
+import dedent from 'npm:dedent@1.5.3'
 
 type OramaInterfaceConfig = {
   baseURL: string
@@ -12,11 +12,11 @@ type SecurityLevel = 'master' | 'write' | 'read'
 
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
-type RequestConfig = {
+type RequestConfig<Body = AnyObject> = {
   url: string
   method: Method
   securityLevel: SecurityLevel
-  body?: AnyObject
+  body?: Body
 }
 
 export class OramaInterface {
@@ -32,7 +32,7 @@ export class OramaInterface {
     this.readAPIKey = config.readAPIKey || null
   }
 
-  public async request<T = unknown>(config: RequestConfig): Promise<T> {
+  public async request<T = unknown, B = AnyObject>(config: RequestConfig<B>): Promise<T> {
     const remoteURL = new URL(config.url, this.baseURL)
     const headers = new Headers()
 
@@ -54,7 +54,7 @@ export class OramaInterface {
 
     const requestObject: Partial<RequestInit> = {
       method: config.method,
-      headers
+      headers,
     }
 
     if (config.body) {
@@ -68,7 +68,7 @@ export class OramaInterface {
         dedent(`
                 Request to "${config.url}" failed with status ${request.status}:
                 ${await request.text()}
-            `)
+            `),
       )
     }
 

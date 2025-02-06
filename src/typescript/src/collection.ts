@@ -1,5 +1,5 @@
-import { OramaInterface } from './common'
-import { AnyObject, Hook, Nullable, SearchParams, SearchResult } from './lib/types'
+import { OramaInterface } from './common.ts'
+import type { AnyObject, Hook, Nullable, SearchParams, SearchResult } from './lib/types.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -36,27 +36,27 @@ export class CollectionManager {
       baseURL: this.url,
       masterAPIKey: null,
       writeAPIKey: this.writeAPIKey || null,
-      readAPIKey: this.readAPIKey || null
+      readAPIKey: this.readAPIKey || null,
     })
   }
 
   public async addHook(config: AddHookConfig): Promise<NewHookresponse> {
     const body = {
       name: config.name,
-      code: config.code
+      code: config.code,
     }
 
     await this.oramaInterface.request({
       url: `/v1/collections/${config.collectionID}/hooks/create`,
       body,
       method: 'POST',
-      securityLevel: 'write'
+      securityLevel: 'write',
     })
 
     return {
       hookID: body.name,
       collectionID: config.collectionID,
-      code: body.code
+      code: body.code,
     }
   }
 
@@ -65,11 +65,11 @@ export class CollectionManager {
       documents = [documents]
     }
 
-    await this.oramaInterface.request({
+    await this.oramaInterface.request<void, AnyObject[]>({
       url: `/v1/collections/${this.collectionID}/insert`,
       body: documents,
       method: 'POST',
-      securityLevel: 'write'
+      securityLevel: 'write',
     })
   }
 
@@ -78,16 +78,16 @@ export class CollectionManager {
       url: `/v1/collections/${this.collectionID}/delete`,
       body: { documentIDs },
       method: 'POST',
-      securityLevel: 'write'
+      securityLevel: 'write',
     })
   }
 
-  public async search<R = AnyObject>(query: SearchParams): Promise<SearchResult<R>> {
+  public search<R = AnyObject>(query: SearchParams): Promise<SearchResult<R>> {
     return this.oramaInterface.request<SearchResult<R>>({
       url: `/v1/collections/${this.collectionID}/search`,
       body: query,
       method: 'POST',
-      securityLevel: 'read'
+      securityLevel: 'read',
     })
   }
 }

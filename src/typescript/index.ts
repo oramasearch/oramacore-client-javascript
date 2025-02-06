@@ -1,5 +1,5 @@
-import { OramaCoreManager } from "./src/manager";
-import { CollectionManager } from "./src/collection";
+import { OramaCoreManager } from "./src/manager.js";
+import { CollectionManager } from "./src/collection.js";
 
 const orama = new OramaCoreManager({
     url: 'http://localhost:8080',
