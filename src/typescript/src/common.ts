@@ -1,11 +1,11 @@
-import type { AnyObject } from './lib/types'
+import type { Nullable, AnyObject } from './lib/types'
 import dedent from 'dedent'
 
 type OramaInterfaceConfig = {
   baseURL: string
-  masterAPIKey: string
-  writeAPIKey: string
-  readAPIKey: string
+  masterAPIKey?: Nullable<string>
+  writeAPIKey?: Nullable<string>
+  readAPIKey?: Nullable<string>
 }
 
 type SecurityLevel = 'master' | 'write' | 'read'
@@ -21,15 +21,15 @@ type RequestConfig = {
 
 export class OramaInterface {
   private baseURL: string
-  private masterAPIKey: string
-  private writeAPIKey: string
-  private readAPIKey: string
+  private masterAPIKey: Nullable<string>
+  private writeAPIKey: Nullable<string>
+  private readAPIKey: Nullable<string>
 
   constructor(config: OramaInterfaceConfig) {
     this.baseURL = config.baseURL
-    this.masterAPIKey = config.masterAPIKey
-    this.writeAPIKey = config.writeAPIKey
-    this.readAPIKey = config.readAPIKey
+    this.masterAPIKey = config.masterAPIKey || null
+    this.writeAPIKey = config.writeAPIKey || null
+    this.readAPIKey = config.readAPIKey || null
   }
 
   public async request<T = unknown>(config: RequestConfig): Promise<T> {
@@ -78,10 +78,19 @@ export class OramaInterface {
   private getAPIKey(securityLevel: SecurityLevel): string {
     switch (securityLevel) {
       case 'master':
+        if (!this.masterAPIKey) {
+          throw new Error('Master API key is required for this operation')
+        }
         return this.masterAPIKey
       case 'write':
+        if (!this.writeAPIKey) {
+          throw new Error('Write API key is required for this operation')
+        }
         return this.writeAPIKey
       case 'read':
+        if (!this.readAPIKey) {
+          throw new Error('Read API key is required for this operation')
+        }
         return this.readAPIKey
     }
   }

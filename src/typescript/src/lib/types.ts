@@ -51,3 +51,27 @@ export type EmbeddingsConfig = {
 }
 
 export type Hook = 'selectEmbeddingProperties'
+
+export type SearchMode = 'fulltext' | 'vector' | 'hybrid'
+
+export type SearchParams = {
+  term: string
+  mode?: SearchMode
+  limit?: number
+  offset?: number
+  properties?: string[]
+  where?: AnyObject
+  facets?: AnyObject
+}
+
+export type Hit<T = AnyObject> = {
+  id: string
+  score: number
+  document: T
+}
+
+export type SearchResult<T = AnyObject> = {
+  count: number
+  hits: Hit<T>[]
+  facets?: AnyObject
+}

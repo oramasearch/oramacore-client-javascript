@@ -1,4 +1,4 @@
-import type { Nullable, Language, EmbeddingsConfig, Hook, AnyObject } from './lib/types'
+import type { Nullable, Language, EmbeddingsConfig, AnyObject } from './lib/types'
 import { OramaInterface } from './common'
 import { createRandomString } from './lib/utils'
 
@@ -21,18 +21,6 @@ type NewCollectionResponse = {
   description: Nullable<string>
   writeAPIKey: string
   readonlyAPIKey: string
-}
-
-type AddHookConfig = {
-  hookID: Hook
-  collectionID: string
-  code: string
-}
-
-type NewHookresponse = {
-  hookID: string
-  collectionID: string
-  code: string
 }
 
 type GetCollectionsResponse = {
@@ -96,25 +84,5 @@ export class OramaCoreManager {
       method: 'GET',
       securityLevel: 'master'
     })
-  }
-
-  public async addHook(config: AddHookConfig): Promise<NewHookresponse> {
-    const body = {
-      id: config.hookID,
-      code: config.code
-    }
-
-    await this.oramaInterface.request({
-      url: `/v1/collections/${config.collectionID}/hooks/add`,
-      body,
-      method: 'POST',
-      securityLevel: 'master'
-    })
-
-    return {
-      hookID: body.id,
-      collectionID: config.collectionID,
-      code: body.code
-    }
   }
 }
