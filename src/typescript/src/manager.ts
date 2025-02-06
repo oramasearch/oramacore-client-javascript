@@ -9,7 +9,7 @@ type OramaCoreManagerConfig = {
 
 type CreateCollectionParams = {
   id: string
-  description: Nullable<string>
+  description?: Nullable<string>
   writeAPIKey?: Nullable<string>
   readAPIKey?: Nullable<string>
   language?: Nullable<Language>
@@ -18,7 +18,7 @@ type CreateCollectionParams = {
 
 type NewCollectionResponse = {
   id: string
-  description: Nullable<string>
+  description?: Nullable<string>
   writeAPIKey: string
   readonlyAPIKey: string
 }
