@@ -1,0 +1,30 @@
+{
+  "name": "@orama/core",
+  "version": "0.0.1",
+  "description": "JavaScript client for OramaCore",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "fmt": "npx @biomejs/biome format --write src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oramasearch/oramacore-client.git"
+  },
+  "keywords": [
+    "orama",
+    "oramacore"
+  ],
+  "author": "Michele Riva <michele@orama.com>",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/oramasearch/oramacore-client/issues"
+  },
+  "homepage": "https://github.com/oramasearch/oramacore-client#readme",
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4"
+  },
+  "dependencies": {
+    "dedent": "^1.5.3"
+  }
+}
