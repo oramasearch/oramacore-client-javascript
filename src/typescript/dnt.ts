@@ -1,12 +1,14 @@
 import { build, emptyDir } from 'jsr:@deno/dnt'
 
-await emptyDir('./npm')
+const outDir = './.npm'
+
+await emptyDir(outDir)
 
 await build({
   entryPoints: ['./src/index.ts'],
-  outDir: './.npm',
+  outDir,
   shims: {
-    deno: false,
+    deno: 'dev',
   },
   scriptModule: 'cjs',
   typeCheck: 'both',
@@ -28,7 +30,7 @@ await build({
     },
   },
   postBuild() {
-    Deno.copyFileSync('LICENSE.md', 'npm/LICENSE.md')
-    Deno.copyFileSync('README.md', 'npm/README.md')
+    Deno.copyFileSync('./LICENSE.md', `${outDir}/LICENSE.md`)
+    Deno.copyFileSync('./README.md', `${outDir}/README.md`)
   },
 })

@@ -72,7 +72,7 @@ export class OramaInterface {
       )
     }
 
-    return request.json()
+    return request.json() as Promise<T>
   }
 
   private getAPIKey(securityLevel: SecurityLevel): string {
