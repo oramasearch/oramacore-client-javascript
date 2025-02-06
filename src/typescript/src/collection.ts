@@ -1,5 +1,6 @@
 import { OramaInterface } from './common.ts'
 import type { AnyObject, Hook, Nullable, SearchParams, SearchResult } from './lib/types.ts'
+import { formatDuration } from './lib/utils.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -73,21 +74,37 @@ export class CollectionManager {
     })
   }
 
-  public async delete(documentIDs: string[]): Promise<void> {
+  public async delete(documentIDs: string[] | string): Promise<void> {
+    if (!Array.isArray(documentIDs)) {
+      documentIDs = [documentIDs]
+    }
+
     await this.oramaInterface.request({
       url: `/v1/collections/${this.collectionID}/delete`,
-      body: { documentIDs },
+      body: documentIDs,
       method: 'POST',
       securityLevel: 'write',
     })
   }
 
-  public search<R = AnyObject>(query: SearchParams): Promise<SearchResult<R>> {
-    return this.oramaInterface.request<SearchResult<R>>({
+  public async search<R = AnyObject>(query: SearchParams): Promise<SearchResult<R>> {
+    const start = +new Date()
+
+    const result = await this.oramaInterface.request<Omit<SearchResult<R>, 'elapsed'>>({
       url: `/v1/collections/${this.collectionID}/search`,
       body: query,
       method: 'POST',
-      securityLevel: 'read',
+      securityLevel: 'read-query',
     })
+
+    const elapsed = +new Date() - start
+
+    return {
+      ...result,
+      elapsed: {
+        raw: elapsed,
+        formatted: formatDuration(elapsed),
+      },
+    }
   }
 }

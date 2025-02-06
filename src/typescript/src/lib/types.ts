@@ -74,4 +74,8 @@ export type SearchResult<T = AnyObject> = {
   count: number
   hits: Hit<T>[]
   facets?: AnyObject
+  elapsed: {
+    raw: number
+    formatted: string
+  }
 }

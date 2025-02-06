@@ -8,7 +8,7 @@ type OramaInterfaceConfig = {
   readAPIKey?: Nullable<string>
 }
 
-type SecurityLevel = 'master' | 'write' | 'read'
+type SecurityLevel = 'master' | 'write' | 'read' | 'read-query'
 
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
@@ -38,18 +38,18 @@ export class OramaInterface {
 
     headers.append('Content-Type', 'application/json')
 
-    if (config.method !== 'GET') {
-      const APIKey = this.getAPIKey(config.securityLevel)
-      headers.append('Authorization', `Bearer ${APIKey}`)
-    }
+    const APIKey = this.getAPIKey(config.securityLevel)
 
-    if (config.method === 'GET' && config.securityLevel === 'master') {
-      const APIKey = this.getAPIKey(config.securityLevel)
-      headers.append('Authorization', `Bearer ${APIKey}`)
-    }
-
-    if (config.method === 'GET') {
-      remoteURL.searchParams.append('api-key', this.getAPIKey(config.securityLevel))
+    switch (true) {
+      case config.method !== 'GET' && config.securityLevel !== 'read-query':
+        headers.append('Authorization', `Bearer ${APIKey}`)
+        break
+      case config.method === 'GET' && config.securityLevel === 'master':
+        headers.append('Authorization', `Bearer ${APIKey}`)
+        break
+      case config.method === 'GET' || config.securityLevel === 'read-query':
+        remoteURL.searchParams.append('api-key', APIKey)
+        break
     }
 
     const requestObject: Partial<RequestInit> = {
@@ -88,6 +88,7 @@ export class OramaInterface {
         }
         return this.writeAPIKey
       case 'read':
+      case 'read-query':
         if (!this.readAPIKey) {
           throw new Error('Read API key is required for this operation')
         }

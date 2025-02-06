@@ -8,3 +8,15 @@ export function createRandomString(length: number): string {
 
   return result
 }
+
+export function formatDuration(duration: number): string {
+  if (duration < 1000) {
+    return `${duration}ms`
+  } else {
+    const seconds = duration / 1000
+    if (Number.isInteger(seconds)) {
+      return `${seconds}s`
+    }
+    return `${seconds.toFixed(1)}s`
+  }
+}
