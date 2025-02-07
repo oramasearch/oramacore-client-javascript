@@ -1,4 +1,6 @@
 import { OramaInterface } from './common.ts'
+import type { SSEEvent } from './lib/event-stream.ts'
+import type { Maybe } from './lib/types.ts'
 
 type AnswerSessionConfig = {
   url: string
@@ -39,7 +41,7 @@ export class AnswerSession {
     })
   }
 
-  public async answerStream(data: AnswerConfig): Promise<void> {
+  public async *answerStream(data: AnswerConfig): AsyncGenerator<SSEEvent> {
     const body = {
       interaction_id: data.interactionID,
       query: data.query,
@@ -60,11 +62,13 @@ export class AnswerSession {
     while (true) {
       const { done, value } = await reader.read()
 
+      if (value !== undefined) {
+        yield value
+      }
+
       if (done) {
         break
       }
-
-      console.log(value)
     }
 
     reader.releaseLock()

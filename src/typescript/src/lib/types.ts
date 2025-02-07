@@ -1,4 +1,6 @@
-export type Nullable<T> = T | null
+export type Nullable<T = unknown> = T | null
+
+export type Maybe<T = unknown> = T | undefined
 
 export type AnyObject<T = unknown> = Record<string, T>
 

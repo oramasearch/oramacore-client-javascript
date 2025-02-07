@@ -9,9 +9,13 @@ const orama = new CollectionManager({
 
 const answerSession = orama.createAnswerSession()
 
-await answerSession.answerStream({
+const messages = answerSession.answerStream({
     query: 'What is TanStack table?',
     interactionID: '123',
     sessionID: '123',
     visitorID: '123',
 })
+
+for await (const message of messages) {
+    console.log(message)
+}
