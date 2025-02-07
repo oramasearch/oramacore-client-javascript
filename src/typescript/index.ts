@@ -10,7 +10,7 @@ const orama = new CollectionManager({
 const answerSession = orama.createAnswerSession()
 
 const messages = answerSession.plannedAnswerStream({
-    query: 'What is TanStack table? How can I use it?',
+    query: 'How do I enable table sorting?',
     interactionID: '123',
     sessionID: '123',
     visitorID: '123',

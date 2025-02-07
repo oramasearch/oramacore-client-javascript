@@ -1,7 +1,5 @@
 import { OramaInterface } from './common.ts'
-import { AnyObject } from './index.ts'
 import type { SSEEvent } from './lib/event-stream.ts'
-import type { Maybe } from './lib/types.ts'
 
 type AnswerSessionConfig = {
   url: string
