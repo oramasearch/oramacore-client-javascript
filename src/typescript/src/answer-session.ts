@@ -73,6 +73,7 @@ export class AnswerSession {
     })
 
     this.messages = config.initialMessages || []
+    this.events = config.events
   }
 
   public async *answerStream(data: AnswerConfig): AsyncGenerator<SSEEvent> {
@@ -108,7 +109,25 @@ export class AnswerSession {
     reader.releaseLock()
   }
 
-  public async *plannedAnswerStream(data: AnswerConfig): AsyncGenerator<PlannedAnswerResponse> {
+  public async *getPlannedAnswerStream(
+    data: AnswerConfig,
+  ): AsyncGenerator<string> {
+    for await (const _ of this.fetchPlannedAnswer(data)) {
+      yield this.state[this.state.length - 1].response
+    }
+  }
+
+  public async getPlannedAnswer(data: AnswerConfig): Promise<string> {
+    for await (const _ of this.fetchPlannedAnswer(data)) {
+      continue
+    }
+
+    return this.state[this.state.length - 1].response
+  }
+
+  private async *fetchPlannedAnswer(
+    data: AnswerConfig,
+  ): AsyncGenerator<PlannedAnswerResponse> {
     // Resets the abort controller. This is necessary to avoid aborting the previous request if there is one.
     this.abortController = new AbortController()
 
@@ -237,6 +256,11 @@ export class AnswerSession {
     }
 
     reader.releaseLock()
+
+    // The server has finished sending messages.
+    // We can now mark the interaction as not loading anymore.
+    this.state[currentStateIndex].loading = false
+    this.pushState()
   }
 
   public abort() {

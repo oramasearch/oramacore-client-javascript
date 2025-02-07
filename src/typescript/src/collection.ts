@@ -116,7 +116,7 @@ export class CollectionManager {
     }
   }
 
-  public createAnswerSession(config: CreateAnswerSessionConfig): AnswerSession {
+  public createAnswerSession(config?: CreateAnswerSessionConfig): AnswerSession {
     if (!this.readAPIKey) {
       throw new Error('Read API key is required to create an answer session')
     }

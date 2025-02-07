@@ -7,24 +7,19 @@ const orama = new CollectionManager({
     url: 'http://localhost:8080',
 })
 
-const answerSession = orama.createAnswerSession({
-    events: {
-        onStateChange: (state) => {
-            console.log('State changed')
-            console.log(state)
-        }
-    }
-})
+const answerSession = orama.createAnswerSession()
 
-const messages = answerSession.plannedAnswerStream({
+const foo = await answerSession.getPlannedAnswerStream({
     query: 'How do I enable table sorting?',
     interactionID: '123',
     sessionID: '123',
     visitorID: '123',
 })
 
-for await (const msg of messages) {
+// console.log(foo)
+
+for await (const msg of foo) {
     console.log(msg)
 }
 
-console.log(answerSession.messages)
+// console.log(answerSession.messages)
