@@ -6,7 +6,7 @@ export type SSEEvent = {
 
 export class EventsStreamTransformer extends TransformStream<Uint8Array, SSEEvent> {
   constructor() {
-    const decoder: TextDecoder = new TextDecoder('utf-8', { ignoreBOM: false })
+    const decoder = new TextDecoder('utf-8', { ignoreBOM: false })
     let buffer: string
     let currentEvent: SSEEvent
 

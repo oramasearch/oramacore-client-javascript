@@ -1,4 +1,6 @@
-import type { AnyObject, Maybe } from './types.ts'
+/// <reference lib="dom" />
+
+import type { Maybe } from './types.ts'
 
 export function createRandomString(length: number): string {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-$'
@@ -25,8 +27,8 @@ export function formatDuration(duration: number): string {
 
 export function sendBeacon(endpoint: string, body?: string): Maybe<Promise<Response>> {
   if (typeof navigator !== 'undefined') {
-    if (typeof (navigator as unknown as AnyObject).sendBeacon !== 'undefined') {
-      ;(navigator as any).sendBeacon(endpoint, body)
+    if (typeof navigator.sendBeacon !== 'undefined') {
+      navigator.sendBeacon(endpoint, body)
     }
     return
   }
