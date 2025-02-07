@@ -1,4 +1,4 @@
-import { EventsStreamTransformer, SSEEvent } from './lib/event-stream.ts'
+import { EventsStreamTransformer, type SSEEvent } from './lib/event-stream.ts'
 import type { AnyObject, Nullable } from './lib/types.ts'
 import dedent from 'npm:dedent@1.5.3'
 
@@ -18,6 +18,7 @@ type RequestConfig<Body = AnyObject> = {
   method: Method
   securityLevel: SecurityLevel
   body?: Body
+  signal?: AbortSignal
 }
 
 export class OramaInterface {

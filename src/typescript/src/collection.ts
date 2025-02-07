@@ -1,7 +1,7 @@
 import { OramaInterface } from './common.ts'
 import type { AnyObject, Hook, Nullable, SearchParams, SearchResult } from './lib/types.ts'
 import { formatDuration } from './lib/utils.ts'
-import { AnswerSession } from './answer-session.ts'
+import { AnswerSession, type Interaction, type Message } from './answer-session.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -20,6 +20,13 @@ type NewHookresponse = {
   hookID: string
   collectionID: string
   code: string
+}
+
+export type CreateAnswerSessionConfig = {
+  initialMessages?: Message[]
+  events?: {
+    onStateChange: (state: Interaction[]) => void
+  }
 }
 
 export class CollectionManager {
@@ -109,7 +116,7 @@ export class CollectionManager {
     }
   }
 
-  public createAnswerSession(): AnswerSession {
+  public createAnswerSession(config: CreateAnswerSessionConfig): AnswerSession {
     if (!this.readAPIKey) {
       throw new Error('Read API key is required to create an answer session')
     }
@@ -118,6 +125,7 @@ export class CollectionManager {
       url: this.url,
       readAPIKey: this.readAPIKey || '',
       collectionID: this.collectionID,
+      ...config,
     })
   }
 }
