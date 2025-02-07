@@ -143,5 +143,11 @@
     "dedent@1.5.3": {
       "integrity": "sha512-NHQtfOOW68WD8lgypbLA5oT+Bt0xXJhiYvoR6SmmNXZfpzOGXwdKWmcwG8N7PwVVWV3eF/68nmD9BaJSsTBhyQ=="
     }
+  },
+  "redirects": {
+    "https://deno.land/": "https://deno.com/",
+    "https://deno.land/std": "https://deno.land/std@0.224.0",
+    "https://deno.land/std/": "https://deno.land/std",
+    "https://deno.land/std/dom/mod.ts": "https://deno.land/std@0.224.0/dom/mod.ts"
   }
 }

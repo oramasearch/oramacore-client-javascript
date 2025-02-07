@@ -13,5 +13,11 @@
             "./src/**/*.ts",
             "./tests/**/*.ts"
         ]
+    },
+    "compilerOptions": {
+        "lib": [
+            "deno.window",
+            "dom"
+        ]
     }
 }

@@ -11,6 +11,9 @@ await build({
   shims: {
     deno: 'dev',
   },
+  compilerOptions: {
+    lib: ['DOM'],
+  },
   scriptModule: 'cjs',
   typeCheck: 'both',
   package: {

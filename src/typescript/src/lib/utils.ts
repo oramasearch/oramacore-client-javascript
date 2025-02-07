@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-
 import type { Maybe } from './types.ts'
 
 export function createRandomString(length: number): string {
