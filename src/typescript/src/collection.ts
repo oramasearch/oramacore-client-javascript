@@ -1,6 +1,7 @@
 import { OramaInterface } from './common.ts'
 import type { AnyObject, Hook, Nullable, SearchParams, SearchResult } from './lib/types.ts'
 import { formatDuration } from './lib/utils.ts'
+import { AnswerSession } from './answer-session.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -106,5 +107,17 @@ export class CollectionManager {
         formatted: formatDuration(elapsed),
       },
     }
+  }
+
+  public createAnswerSession(): AnswerSession {
+    if (!this.readAPIKey) {
+      throw new Error('Read API key is required to create an answer session')
+    }
+
+    return new AnswerSession({
+      url: this.url,
+      readAPIKey: this.readAPIKey || '',
+      collectionID: this.collectionID,
+    })
   }
 }

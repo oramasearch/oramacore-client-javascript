@@ -1,3 +1,4 @@
+import { EventsStreamTransformer, SSEEvent } from './lib/event-stream.ts'
 import type { AnyObject, Nullable } from './lib/types.ts'
 import dedent from 'npm:dedent@1.5.3'
 
@@ -73,6 +74,38 @@ export class OramaInterface {
     }
 
     return request.json() as Promise<T>
+  }
+
+  public async requestStream<B = AnyObject>(
+    config: RequestConfig<B>,
+  ): Promise<ReadableStream<SSEEvent>> {
+    const remoteURL = new URL(config.url, this.baseURL)
+    const headers = new Headers()
+    headers.append('Content-Type', 'application/json')
+
+    const APIKey = this.getAPIKey(config.securityLevel)
+    remoteURL.searchParams.append('api-key', APIKey)
+
+    const response = await fetch(remoteURL.toString(), {
+      body: JSON.stringify(config.body),
+      headers,
+      method: config.method,
+    })
+
+    if (!response.ok) {
+      throw new Error(
+        dedent(`
+                Request to "${config.url}" failed with status ${response.status}:
+                ${await response.text()}
+            `),
+      )
+    }
+
+    if (response.body === null) {
+      throw new Error(`Response body is null for "${config.url}"`)
+    }
+
+    return response.body?.pipeThrough(new EventsStreamTransformer())
   }
 
   private getAPIKey(securityLevel: SecurityLevel): string {
