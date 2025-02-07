@@ -9,8 +9,8 @@ const orama = new CollectionManager({
 
 const answerSession = orama.createAnswerSession()
 
-const messages = answerSession.answerStream({
-    query: 'What is TanStack table?',
+const messages = answerSession.plannedAnswerStream({
+    query: 'What is TanStack table? How can I use it?',
     interactionID: '123',
     sessionID: '123',
     visitorID: '123',

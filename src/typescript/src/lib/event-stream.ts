@@ -1,6 +1,8 @@
-import type { AnyObject, Nullable } from './types.ts'
+import type { Nullable } from './types.ts'
 
-export type SSEEvent = AnyObject
+export type SSEEvent = {
+  data: string
+}
 
 export class EventsStreamTransformer extends TransformStream<Uint8Array, SSEEvent> {
   constructor() {
@@ -11,7 +13,7 @@ export class EventsStreamTransformer extends TransformStream<Uint8Array, SSEEven
     super({
       start() {
         buffer = ''
-        currentEvent = {}
+        currentEvent = { data: '' }
       },
       transform(chunk, controller) {
         const chunkText = decoder.decode(chunk)
@@ -24,16 +26,18 @@ export class EventsStreamTransformer extends TransformStream<Uint8Array, SSEEven
           buffer = buffer.substring(lineEnd.index + lineEnd[0].length)
           if (line.length === 0) {
             controller.enqueue(currentEvent)
-            currentEvent = {}
+            currentEvent = { data: '' }
           } else if (!line.startsWith(':')) {
             const firstColonMatch = /:/.exec(line)
             if (!firstColonMatch) {
+              // @ts-expect-error - Temporary fix
               currentEvent[line] = ''
               continue
             }
             const key = line.substring(0, firstColonMatch.index)
             const value = line.substring(firstColonMatch.index + 1)
 
+            // @ts-expect-error - Temporary fix
             currentEvent[key] = value?.replace(/^\u0020/, '')
           }
         }
