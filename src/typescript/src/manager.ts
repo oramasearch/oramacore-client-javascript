@@ -52,8 +52,13 @@ export class OramaCoreManager {
       description: config.description,
       write_api_key: config.writeAPIKey ?? createRandomString(32),
       read_api_key: config.readAPIKey ?? createRandomString(32),
-      embeddings: config.embeddings,
-    }
+      embeddings: config.embeddings
+        ? {
+            model: config.embeddings.model,
+            document_fields: config.embeddings.documentFields,
+          }
+        : null,
+    };
 
     await this.oramaInterface.request({
       url: '/v1/collections/create',
