@@ -102,6 +102,12 @@ export type InsertSegmentBody = {
   goal?: string
 }
 
+export type InsertTriggerBody = {
+  name: string
+  description: string
+  response: string
+}
+
 export type InsertSegmentResponse = {
   success: boolean
   id: string

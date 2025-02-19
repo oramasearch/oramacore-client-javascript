@@ -4,6 +4,7 @@ import type {
   Hook,
   InsertSegmentBody,
   InsertSegmentResponse,
+  InsertTriggerBody,
   Nullable,
   SearchParams,
   SearchResult,
@@ -12,7 +13,7 @@ import type {
 } from './lib/types.ts'
 import { formatDuration } from './lib/utils.ts'
 import { AnswerSession, type Interaction, type Message } from './answer-session.ts'
-import { InsertTriggerResponse } from './index.ts'
+import type { InsertTriggerResponse } from './index.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -184,7 +185,7 @@ export class CollectionManager {
     })
   }
 
-  public insertTrigger(trigger: Trigger): Promise<InsertTriggerResponse> {
+  public insertTrigger(trigger: InsertTriggerBody): Promise<InsertTriggerResponse> {
     return this.oramaInterface.request<InsertTriggerResponse>({
       url: `/v1/collections/${this.collectionID}/triggers/insert`,
       body: trigger,
@@ -195,7 +196,8 @@ export class CollectionManager {
 
   public getTrigger(id: string): Promise<{ trigger: Trigger }> {
     return this.oramaInterface.request<{ trigger: Trigger }>({
-      url: `/v1/collections/${this.collectionID}/triggers/${id}`,
+      url: `/v1/collections/${this.collectionID}/triggers/get`,
+      body: { trigger_id: id },
       method: 'GET',
       securityLevel: 'read-query',
     })
@@ -209,9 +211,10 @@ export class CollectionManager {
     })
   }
 
-  public deleteTrigger(): Promise<{ success: boolean }> {
+  public deleteTrigger(id: string): Promise<{ success: boolean }> {
     return this.oramaInterface.request<{ success: boolean }>({
       url: `/v1/collections/${this.collectionID}/triggers/delete`,
+      body: { id },
       method: 'POST',
       securityLevel: 'write',
     })
