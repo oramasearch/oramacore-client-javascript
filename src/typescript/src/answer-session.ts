@@ -1,5 +1,6 @@
 import { createId } from 'npm:@paralleldrive/cuid2@2.2.2'
 import { OramaInterface } from './common.ts'
+import { knownActionsArray } from './const.ts'
 import type { AnyObject, Nullable } from './index.ts'
 import type { SSEEvent } from './lib/event-stream.ts'
 import type { CreateAnswerSessionConfig } from './collection.ts'
@@ -32,6 +33,13 @@ export type PlanAction = {
   description: string
 }
 
+export type PlanExecution = {
+  [key: string]: {
+    instruction: string
+    result: string
+  }
+}
+
 export type Interaction<D = AnyObject> = {
   id: string
   query: string
@@ -41,6 +49,7 @@ export type Interaction<D = AnyObject> = {
   error: boolean
   planned: boolean
   plan: Nullable<PlanAction[]>
+  planExecution: PlanExecution
   errorMessage: Nullable<string>
   aborted: boolean
 }
@@ -118,9 +127,8 @@ export class AnswerSession {
   }
 
   public async getPlannedAnswer(data: AnswerConfig): Promise<string> {
-    for await (const _ of this.fetchPlannedAnswer(data)) {
-      continue
-    }
+    // deno-lint-ignore no-empty
+    for await (const _ of this.fetchPlannedAnswer(data)) {}
 
     return this.state[this.state.length - 1].response
   }
@@ -153,6 +161,7 @@ export class AnswerSession {
       errorMessage: null,
       planned: true,
       plan: null,
+      planExecution: {},
     })
 
     // The current state index. We'll need to frequently access the last state to update it,
@@ -215,6 +224,20 @@ export class AnswerSession {
 
             // Updates the current state with the new plan.
             this.state[currentStateIndex].plan = jsonPlan
+
+            // Updates the current state's planExecution with the new plan.
+            const planExecution: PlanExecution = {}
+
+            for (const step of jsonPlan) {
+              planExecution[step.step] = {
+                instruction: step.description,
+                result: '',
+              }
+            }
+
+            this.state[currentStateIndex].planExecution = planExecution
+
+            // Push the new state.
             this.pushState()
 
             yield { action: 'ACTION_PLAN', message: jsonPlan }
@@ -228,6 +251,13 @@ export class AnswerSession {
 
             // Updates the current state with the new sources.
             this.state[currentStateIndex].sources = jsonResult
+
+            // Updates the current state's planExecution with the new result.
+            if ('PERFORM_ORAMA_SEARCH' in this.state[currentStateIndex].planExecution) {
+              this.state[currentStateIndex].planExecution.PERFORM_ORAMA_SEARCH.result = jsonResult
+            }
+
+            // Push the new state.
             this.pushState()
 
             yield { action: 'PERFORM_ORAMA_SEARCH', message: jsonResult }
@@ -240,10 +270,18 @@ export class AnswerSession {
             // This is a streamed message, so we'll need to accumulate.
             this.state[currentStateIndex].response += message.result
             this.messages[currentMessageIndex].content = this.state[currentStateIndex].response
+
+            this.state[currentStateIndex].planExecution[action].result += message.result
+
             this.pushState()
 
             yield { action, message: message.result }
             continue
+          }
+
+          if (!knownActionsArray.includes(action)) {
+            this.state[currentStateIndex].planExecution[action].result += message.result
+            this.pushState()
           }
 
           yield message
