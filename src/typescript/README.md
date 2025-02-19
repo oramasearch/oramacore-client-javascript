@@ -75,7 +75,7 @@ const result = await collectionManager.search({
 })
 ```
 
-For the full API reference, please go to [https://docs.oramacore.com/docs/apis/introduction](https://docs.oramacore.com/docs/apis/introduction).
+For the full API reference, please go to [https://docs.oramacore.com/docs/apis/introduction#javascript-sdk](https://docs.oramacore.com/docs/apis/introduction#javascript-sdk).
 
 ## License
 

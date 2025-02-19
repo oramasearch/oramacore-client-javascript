@@ -1,7 +1,18 @@
 import { OramaInterface } from './common.ts'
-import type { AnyObject, Hook, Nullable, SearchParams, SearchResult } from './lib/types.ts'
+import type {
+  AnyObject,
+  Hook,
+  InsertSegmentBody,
+  InsertSegmentResponse,
+  Nullable,
+  SearchParams,
+  SearchResult,
+  Segment,
+  Trigger,
+} from './lib/types.ts'
 import { formatDuration } from './lib/utils.ts'
 import { AnswerSession, type Interaction, type Message } from './answer-session.ts'
+import { InsertTriggerResponse } from './index.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -47,26 +58,6 @@ export class CollectionManager {
       writeAPIKey: this.writeAPIKey || null,
       readAPIKey: this.readAPIKey || null,
     })
-  }
-
-  public async addHook(config: AddHookConfig): Promise<NewHookresponse> {
-    const body = {
-      name: config.name,
-      code: config.code,
-    }
-
-    await this.oramaInterface.request({
-      url: `/v1/collections/${config.collectionID}/hooks/create`,
-      body,
-      method: 'POST',
-      securityLevel: 'write',
-    })
-
-    return {
-      hookID: body.name,
-      collectionID: config.collectionID,
-      code: body.code,
-    }
   }
 
   public async insert(documents: AnyObject[] | AnyObject): Promise<void> {
@@ -126,6 +117,112 @@ export class CollectionManager {
       readAPIKey: this.readAPIKey || '',
       collectionID: this.collectionID,
       ...config,
+    })
+  }
+
+  public async addHook(config: AddHookConfig): Promise<NewHookresponse> {
+    const body = {
+      name: config.name,
+      code: config.code,
+    }
+
+    await this.oramaInterface.request({
+      url: `/v1/collections/${config.collectionID}/hooks/create`,
+      body,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+
+    return {
+      hookID: body.name,
+      collectionID: config.collectionID,
+      code: body.code,
+    }
+  }
+
+  public insertSegment(segment: InsertSegmentBody): Promise<InsertSegmentResponse> {
+    return this.oramaInterface.request<InsertSegmentResponse>({
+      url: `/v1/collections/${this.collectionID}/segments/insert`,
+      body: segment,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public getSegment(id: string): Promise<{ segment: Segment }> {
+    return this.oramaInterface.request<{ segment: Segment }>({
+      url: `/v1/collections/${this.collectionID}/segments/get`,
+      body: { segment_id: id },
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public getAllSegments(): Promise<{ segments: Segment[] }> {
+    return this.oramaInterface.request<{ segments: Segment[] }>({
+      url: `/v1/collections/${this.collectionID}/segments/all`,
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public deleteSegment(id: string): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/segments/delete`,
+      body: { id },
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public updateSegment(segment: Segment): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/segments/update`,
+      body: segment,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public insertTrigger(trigger: Trigger): Promise<InsertTriggerResponse> {
+    return this.oramaInterface.request<InsertTriggerResponse>({
+      url: `/v1/collections/${this.collectionID}/triggers/insert`,
+      body: trigger,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public getTrigger(id: string): Promise<{ trigger: Trigger }> {
+    return this.oramaInterface.request<{ trigger: Trigger }>({
+      url: `/v1/collections/${this.collectionID}/triggers/${id}`,
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public getAllTriggers(): Promise<{ triggers: Trigger[] }> {
+    return this.oramaInterface.request<{ triggers: Trigger[] }>({
+      url: `/v1/collections/${this.collectionID}/triggers/all`,
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public deleteTrigger(): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/triggers/delete`,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public updateTrigger(trigger: Trigger): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/triggers/update`,
+      body: trigger,
+      method: 'POST',
+      securityLevel: 'write',
     })
   }
 }

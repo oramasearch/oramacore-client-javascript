@@ -40,6 +40,19 @@ export class OramaInterface {
 
     headers.append('Content-Type', 'application/json')
 
+    const requestObject: Partial<RequestInit> = {
+      method: config.method,
+      headers,
+    }
+
+    if (config.body && config.method !== 'GET') {
+      requestObject.body = JSON.stringify(config.body)
+    }
+
+    if (config.body && config.method === 'GET') {
+      remoteURL.search = new URLSearchParams(config.body).toString()
+    }
+
     const APIKey = this.getAPIKey(config.securityLevel)
 
     switch (true) {
@@ -52,15 +65,6 @@ export class OramaInterface {
       case config.method === 'GET' || config.securityLevel === 'read-query':
         remoteURL.searchParams.append('api-key', APIKey)
         break
-    }
-
-    const requestObject: Partial<RequestInit> = {
-      method: config.method,
-      headers,
-    }
-
-    if (config.body) {
-      requestObject.body = JSON.stringify(config.body)
     }
 
     const request = await fetch(remoteURL.toString(), requestObject)

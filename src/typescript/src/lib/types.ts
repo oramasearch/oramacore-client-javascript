@@ -81,3 +81,35 @@ export type SearchResult<T = AnyObject> = {
     formatted: string
   }
 }
+
+export type Trigger = {
+  id: string
+  name: string
+  description: string
+  response: string
+}
+
+export type Segment = {
+  id: string
+  name: string
+  description: string
+  goal?: string
+}
+
+export type InsertSegmentBody = {
+  name: string
+  description: string
+  goal?: string
+}
+
+export type InsertSegmentResponse = {
+  success: boolean
+  id: string
+  segment: Segment
+}
+
+export type InsertTriggerResponse = {
+  success: boolean
+  id: string
+  trigger: Trigger
+}
