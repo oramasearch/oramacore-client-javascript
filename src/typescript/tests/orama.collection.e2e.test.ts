@@ -60,6 +60,19 @@ Deno.test('CollectionManager: search documents', async () => {
   assertEquals(result.count, 2)
 })
 
+Deno.test('CollectionManager: search documents with "auto" mode', async () => {
+  const result = await collectionManager.search({
+    term: 'john',
+    where: {
+      age: {
+        gt: 20,
+      },
+    },
+  })
+
+  assertEquals(result.count, 2)
+})
+
 Deno.test('CollectionManager: delete documents', async () => {
   await collectionManager.delete('3')
 

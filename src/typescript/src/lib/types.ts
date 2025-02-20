@@ -54,7 +54,7 @@ export type EmbeddingsConfig = {
 
 export type Hook = 'selectEmbeddingProperties'
 
-export type SearchMode = 'fulltext' | 'vector' | 'hybrid'
+export type SearchMode = 'fulltext' | 'vector' | 'hybrid' | 'auto'
 
 export type SearchParams = {
   term: string

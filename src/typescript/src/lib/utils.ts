@@ -1,7 +1,7 @@
 import type { Maybe } from './types.ts'
 
 export const LOCAL_STORAGE_USER_ID_KEY = '___orama_anonymous_user_id'
-export const LOCAL_STORAGE_SERVER_SIDE_SESSION_KEY = '___orama_server-side-session'
+export const LOCAL_STORAGE_SERVER_SIDE_SESSION_KEY = '___orama_server_side_session'
 export const DEFAULT_TELEMETRY_FLUSH_INTERVAL = 5_000
 export const DEFAULT_TELEMETRY_FLUSH_SIZE = 25
 
