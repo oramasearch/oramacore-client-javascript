@@ -87,6 +87,7 @@ export type Trigger = {
   name: string
   description: string
   response: string
+  segment_id?: string
 }
 
 export type Segment = {
@@ -106,6 +107,7 @@ export type InsertTriggerBody = {
   name: string
   description: string
   response: string
+  segment_id?: string
 }
 
 export type InsertSegmentResponse = {
@@ -115,6 +117,12 @@ export type InsertSegmentResponse = {
 }
 
 export type InsertTriggerResponse = {
+  success: boolean
+  id: string
+  trigger: Trigger
+}
+
+export type UpdateTriggerResponse = {
   success: boolean
   id: string
   trigger: Trigger

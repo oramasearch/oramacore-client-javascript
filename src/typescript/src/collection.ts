@@ -13,7 +13,7 @@ import type {
 } from './lib/types.ts'
 import { formatDuration } from './lib/utils.ts'
 import { AnswerSession, type Interaction, type Message } from './answer-session.ts'
-import type { InsertTriggerResponse } from './index.ts'
+import type { InsertTriggerResponse, UpdateTriggerResponse } from './index.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -220,8 +220,8 @@ export class CollectionManager {
     })
   }
 
-  public updateTrigger(trigger: Trigger): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
+  public updateTrigger(trigger: Trigger): Promise<UpdateTriggerResponse> {
+    return this.oramaInterface.request<UpdateTriggerResponse>({
       url: `/v1/collections/${this.collectionID}/triggers/update`,
       body: trigger,
       method: 'POST',
