@@ -107,7 +107,7 @@ export type InsertTriggerBody = {
   name: string
   description: string
   response: string
-  segment_id?: string
+  segment_id: string
 }
 
 export type InsertSegmentResponse = {

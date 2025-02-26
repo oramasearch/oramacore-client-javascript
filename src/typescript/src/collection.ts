@@ -186,6 +186,10 @@ export class CollectionManager {
   }
 
   public insertTrigger(trigger: InsertTriggerBody): Promise<InsertTriggerResponse> {
+    if (!trigger.segment_id) {
+      throw new Error('You cannot insert a trigger without a segment_id')
+    }
+
     return this.oramaInterface.request<InsertTriggerResponse>({
       url: `/v1/collections/${this.collectionID}/triggers/insert`,
       body: trigger,
