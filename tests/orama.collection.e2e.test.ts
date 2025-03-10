@@ -172,6 +172,7 @@ Deno.test('CollectionManager: get a trigger', async () => {
     name: 'A new test trigger',
     description: 'This is a new test trigger',
     response: 'This is a new test response',
+    segment_id: '123',
   })
 
   const trigger = await collectionManager.getTrigger(newTrigger.id)
@@ -192,6 +193,7 @@ Deno.test('CollectionManager: delete a trigger', async () => {
     name: 'A new test trigger',
     description: 'This is a new test trigger',
     response: 'This is a new test response',
+    segment_id: '123',
   })
 
   const result = await collectionManager.deleteTrigger(newTrigger.id)
@@ -207,6 +209,7 @@ Deno.test.ignore('CollectionManager: update a trigger', async () => {
     name: 'A new test trigger',
     description: 'This is a new test trigger',
     response: 'This is a new test response',
+    segment_id: '123',
   })
 
   const updatedTrigger = await collectionManager.updateTrigger({

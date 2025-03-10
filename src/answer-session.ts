@@ -1,16 +1,27 @@
 import { createId } from 'npm:@paralleldrive/cuid2@2.2.2'
-import { OramaInterface } from './common.ts'
+import { OramaInterface, safeJSONParse } from './common.ts'
 import { knownActionsArray } from './const.ts'
 import type { AnyObject, Nullable } from './index.ts'
 import type { SSEEvent } from './lib/event-stream.ts'
 import type { CreateAnswerSessionConfig } from './collection.ts'
 
-type AnswerSessionConfig = {
+export type AnswerSessionConfig = {
   url: string
   readAPIKey: string
   collectionID: string
   initialMessages?: Message[]
   events?: CreateAnswerSessionConfig['events']
+}
+
+type SSEMEssage = {
+  type: string
+  message: string
+}
+
+type SSEActionMessage = {
+  action: string
+  result: string
+  done: boolean
 }
 
 export type Role = 'system' | 'assistant' | 'user'
@@ -37,6 +48,7 @@ export type PlanExecution = {
   [key: string]: {
     instruction: string
     result: string
+    done: boolean
   }
 }
 
@@ -76,8 +88,6 @@ export class AnswerSession {
     this.collectionID = config.collectionID
     this.oramaInterface = new OramaInterface({
       baseURL: this.url,
-      masterAPIKey: null,
-      writeAPIKey: null,
       readAPIKey: this.readAPIKey,
     })
 
@@ -196,7 +206,7 @@ export class AnswerSession {
           continue
         }
 
-        const data = JSON.parse(value.data)
+        const data = safeJSONParse<SSEMEssage>(value.data)
 
         // Acknowledgement message.
         // This message is sent when the server starts processing the request.
@@ -214,13 +224,13 @@ export class AnswerSession {
             continue
           }
 
-          const message = JSON.parse(data.message)
+          const message = safeJSONParse<SSEActionMessage>(data.message)
           const action = message.action
 
           // As a first message, the server will send the action plan.
           // This action plan contains the list of actions that the server will perform to answer the query.
           if (action === 'ACTION_PLAN') {
-            const jsonPlan = JSON.parse(message.result)
+            const jsonPlan = safeJSONParse<any>(message.result)
 
             // Updates the current state with the new plan.
             this.state[currentStateIndex].plan = jsonPlan
@@ -232,6 +242,7 @@ export class AnswerSession {
               planExecution[step.step] = {
                 instruction: step.description,
                 result: '',
+                done: false,
               }
             }
 
@@ -255,6 +266,7 @@ export class AnswerSession {
             // Updates the current state's planExecution with the new result.
             if ('PERFORM_ORAMA_SEARCH' in this.state[currentStateIndex].planExecution) {
               this.state[currentStateIndex].planExecution.PERFORM_ORAMA_SEARCH.result = jsonResult
+              this.state[currentStateIndex].planExecution.PERFORM_ORAMA_SEARCH.done = true
             }
 
             // Push the new state.
@@ -272,6 +284,7 @@ export class AnswerSession {
             this.messages[currentMessageIndex].content = this.state[currentStateIndex].response
 
             this.state[currentStateIndex].planExecution[action].result += message.result
+            this.state[currentStateIndex].planExecution[action].done = message.done
 
             this.pushState()
 
@@ -281,10 +294,11 @@ export class AnswerSession {
 
           if (!knownActionsArray.includes(action)) {
             this.state[currentStateIndex].planExecution[action].result += message.result
+            this.state[currentStateIndex].planExecution[action].done = message.done
             this.pushState()
           }
 
-          yield message
+          yield message as unknown as PlannedAnswerResponse
         }
       }
 

@@ -4,9 +4,9 @@ import dedent from 'npm:dedent@1.5.3'
 
 type OramaInterfaceConfig = {
   baseURL: string
-  masterAPIKey?: Nullable<string>
-  writeAPIKey?: Nullable<string>
-  readAPIKey?: Nullable<string>
+  masterAPIKey?: string
+  writeAPIKey?: string
+  readAPIKey?: string
 }
 
 type SecurityLevel = 'master' | 'write' | 'read' | 'read-query'
@@ -23,15 +23,15 @@ type RequestConfig<Body = AnyObject> = {
 
 export class OramaInterface {
   private baseURL: string
-  private masterAPIKey: Nullable<string>
-  private writeAPIKey: Nullable<string>
-  private readAPIKey: Nullable<string>
+  private masterAPIKey?: string
+  private writeAPIKey?: string
+  private readAPIKey?: string
 
   constructor(config: OramaInterfaceConfig) {
     this.baseURL = config.baseURL
-    this.masterAPIKey = config.masterAPIKey || null
-    this.writeAPIKey = config.writeAPIKey || null
-    this.readAPIKey = config.readAPIKey || null
+    this.masterAPIKey = config.masterAPIKey
+    this.writeAPIKey = config.writeAPIKey
+    this.readAPIKey = config.readAPIKey
   }
 
   public async request<T = unknown, B = AnyObject>(config: RequestConfig<B>): Promise<T> {
@@ -132,5 +132,16 @@ export class OramaInterface {
         }
         return this.readAPIKey
     }
+  }
+}
+
+export function safeJSONParse<T = unknown>(data: string, silent = true): T {
+  try {
+    return JSON.parse(data)
+  } catch (error) {
+    if (!silent) {
+      console.warn('Recovered from failed JSON parsing with error:', error)
+    }
+    return data as unknown as T
   }
 }

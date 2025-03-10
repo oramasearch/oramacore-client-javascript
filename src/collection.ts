@@ -5,7 +5,6 @@ import type {
   InsertSegmentBody,
   InsertSegmentResponse,
   InsertTriggerBody,
-  Nullable,
   SearchParams,
   SearchResult,
   Segment,
@@ -18,8 +17,8 @@ import type { InsertTriggerResponse, UpdateTriggerResponse } from './index.ts'
 export type CollectionManagerConfig = {
   url: string
   collectionID: string
-  writeAPIKey: Nullable<string>
-  readAPIKey: Nullable<string>
+  writeAPIKey?: string
+  readAPIKey?: string
 }
 
 type AddHookConfig = {
@@ -44,8 +43,8 @@ export type CreateAnswerSessionConfig = {
 export class CollectionManager {
   private url: string
   private collectionID: string
-  private writeAPIKey: Nullable<string>
-  private readAPIKey: Nullable<string>
+  private writeAPIKey?: string
+  private readAPIKey?: string
   private oramaInterface: OramaInterface
 
   constructor(config: CollectionManagerConfig) {
@@ -55,9 +54,8 @@ export class CollectionManager {
     this.collectionID = config.collectionID
     this.oramaInterface = new OramaInterface({
       baseURL: this.url,
-      masterAPIKey: null,
-      writeAPIKey: this.writeAPIKey || null,
-      readAPIKey: this.readAPIKey || null,
+      writeAPIKey: this.writeAPIKey,
+      readAPIKey: this.readAPIKey,
     })
   }
 

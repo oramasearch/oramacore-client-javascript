@@ -2,12 +2,12 @@ import type { AnyObject, EmbeddingsConfig, Language, Nullable } from './lib/type
 import { OramaInterface } from './common.ts'
 import { createRandomString } from './lib/utils.ts'
 
-type OramaCoreManagerConfig = {
+export type OramaCoreManagerConfig = {
   url: string
   masterAPIKey: string
 }
 
-type CreateCollectionParams = {
+export type CreateCollectionParams = {
   id: string
   description?: Nullable<string>
   writeAPIKey?: Nullable<string>
