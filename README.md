@@ -28,7 +28,8 @@ The OramaCore client is made of two distinct classes:
 
 ### The OramaCoreManager
 
-This is the class that allows you to manage your entire OramaCore database. Use this for creating and managing collections.
+This is the class that allows you to manage your entire OramaCore database. Use this for creating
+and managing collections.
 
 It requires a **master API key**, so we **STRONGLY DISCOURAGE** using this class in the browser.
 
@@ -51,9 +52,11 @@ const newCollection = await manager.createCollection({
 ### The CollectionManager
 
 The collection manager is used to insert documents, perform search operations and answer sessions.
-It requires a **write API key** for inserting, updating and deleting documents and a **read API key** to perform search and answer sessions.
+It requires a **write API key** for inserting, updating and deleting documents and a **read API
+key** to perform search and answer sessions.
 
-We **STRONGLY DISCOURAGE** using the **write API key** on browsers. Use the **read API key** only, which is safe to share.
+We **STRONGLY DISCOURAGE** using the **write API key** on browsers. Use the **read API key** only,
+which is safe to share.
 
 ```js
 import { CollectionManager } from '@orama/core'
@@ -61,7 +64,7 @@ import { CollectionManager } from '@orama/core'
 const collectionManager = new CollectionManager({
   url: 'http://localhost:8080',
   collectionID: 'my-new-collection',
-  readAPIKey: 'my-read-api-key'
+  readAPIKey: 'my-read-api-key',
 })
 
 const result = await collectionManager.search({
@@ -75,7 +78,8 @@ const result = await collectionManager.search({
 })
 ```
 
-For the full API reference, please go to [https://docs.oramacore.com/docs/apis/introduction#javascript-sdk](https://docs.oramacore.com/docs/apis/introduction#javascript-sdk).
+For the full API reference, please go to
+[https://docs.oramacore.com/docs/apis/introduction#javascript-sdk](https://docs.oramacore.com/docs/apis/introduction#javascript-sdk).
 
 ## License
 

@@ -52,6 +52,18 @@ export type PlanExecution = {
   }
 }
 
+export type Segment = {
+  id: string
+  name: string
+  probability?: number
+}
+
+export type Trigger = {
+  id: string
+  name: string
+  probability?: number
+}
+
 export type Interaction<D = AnyObject> = {
   id: string
   query: string
@@ -64,6 +76,7 @@ export type Interaction<D = AnyObject> = {
   planExecution: PlanExecution
   errorMessage: Nullable<string>
   aborted: boolean
+  segment: Nullable<Segment>
 }
 
 export type PlannedAnswerResponse = {
@@ -96,8 +109,43 @@ export class AnswerSession {
   }
 
   public async *answerStream(data: AnswerConfig): AsyncGenerator<SSEEvent> {
+    // Resets the abort controller. This is necessary to avoid aborting the previous request if there is one.
+    this.abortController = new AbortController()
+
+    // Add the question to the messages list.
+    // Also add a new, empty assistant message to the conversation.
+    this.messages.push({ role: 'user', content: data.query })
+    this.messages.push({ role: 'assistant', content: '' })
+
+    // New interaction ID. This identifies a single interaction between the AI and the user.
+    // Question and answer will be linked by this ID.
+    const interactionID = data.interactionID || createId()
+
+    // Adds a new empty assistant message to the conversation.
+    // We'll later update this message as new data from the server arrives.
+    this.state.push({
+      id: interactionID,
+      query: data.query,
+      response: '',
+      sources: null,
+      loading: true,
+      error: false,
+      aborted: false,
+      errorMessage: null,
+      planned: false,
+      plan: null,
+      planExecution: {},
+      segment: null,
+    })
+
+    // The current state index. We'll need to frequently access the last state to update it,
+    // so it might be worth it to simplify the process by storing the index.
+    // The same goes for the current message index.
+    const currentStateIndex = this.state.length - 1
+    const currentMessageIndex = this.messages.length - 1
+
     const body = {
-      interaction_id: data.interactionID,
+      interaction_id: interactionID,
       query: data.query,
       visitor_id: data.visitorID,
       conversation_id: data.sessionID,
@@ -117,15 +165,69 @@ export class AnswerSession {
       const { done, value } = await reader.read()
 
       if (value !== undefined) {
+        const data = safeJSONParse<any>(value.data)
+
+        if (data.type === 'response') {
+          const { action, result, done } = safeJSONParse<any>(data.message)
+          console.log(data.message)
+          switch (action) {
+            case 'GET_SEGMENT': {
+              const segment = safeJSONParse<Segment>(result)
+              this.state[currentStateIndex].segment = {
+                id: segment.id,
+                name: segment.name,
+              }
+              this.pushState()
+              break
+            }
+            case 'GET_TRIGGER': {
+              const trigger = safeJSONParse<Trigger>(result)
+              this.state[currentStateIndex].segment = trigger
+              this.pushState()
+              break
+            }
+            case 'OPTIMIZING_QUERY':
+              // @todo: understand if we want to expose this to the user.
+              break
+            case 'SEARCH_RESULTS': {
+              const sources = safeJSONParse<any>(result)
+              this.state[currentStateIndex].sources = sources
+              this.pushState()
+              break
+            }
+            case 'ANSWER_RESPONSE': {
+              this.state[currentStateIndex].response += result
+              this.messages[currentMessageIndex].content = this.state[currentStateIndex].response
+              this.pushState()
+              break
+            }
+          }
+        }
+      }
+
+      if (value !== undefined) {
         yield value
       }
 
       if (done) {
+        this.state[currentStateIndex].loading = false
+        this.pushState()
+
         break
       }
     }
 
     reader.releaseLock()
+  }
+
+  public async answer(data: AnswerConfig): Promise<string> {
+    let acc = ''
+
+    for await (const value of this.answerStream(data)) {
+      acc += value.data
+    }
+
+    return acc
   }
 
   public async *getPlannedAnswerStream(
@@ -172,6 +274,7 @@ export class AnswerSession {
       planned: true,
       plan: null,
       planExecution: {},
+      segment: null,
     })
 
     // The current state index. We'll need to frequently access the last state to update it,
@@ -258,7 +361,7 @@ export class AnswerSession {
           // During the RAG process, the server will send the search results.
           // Since we know they will always be in a valid JSON format, we can parse them.
           if (action === 'PERFORM_ORAMA_SEARCH') {
-            const jsonResult = JSON.parse(message.result)?.flat()
+            const jsonResult = JSON.parse(message.result)
 
             // Updates the current state with the new sources.
             this.state[currentStateIndex].sources = jsonResult
@@ -292,7 +395,46 @@ export class AnswerSession {
             continue
           }
 
+          // GET_SEGMENT needs to be handled separately.
+          // It's a special action that will be used to get the segment of the user.
+          if (action === 'GET_SEGMENT') {
+            this.state[currentStateIndex].segment = {
+              id: (message.result as unknown as Segment).id,
+              name: (message.result as unknown as Segment).name,
+            }
+            this.pushState()
+          }
+
+          // SELECT_SEGMENT_PROBABILITY needs to be handled separately.
+          // Sometimes the server will not send this, so we need to check this separately.
+          if (action === 'SELECT_SEGMENT_PROBABILITY') {
+            if (this.state[currentStateIndex].segment) {
+              const probability = (message.result as unknown as Segment).probability
+              this.state[currentStateIndex].segment.probability = probability
+              this.pushState()
+            }
+          }
+
+          // Just like with the segment, we need to handle the triggers separately.
+          if (action === 'GET_TRIGGER') {
+            this.state[currentStateIndex].segment = {
+              id: (message.result as unknown as Trigger).id,
+              name: (message.result as unknown as Trigger).name,
+            }
+            this.pushState()
+          }
+
+          // And just like SELECT_SEGMENT_PROBABILITY, we need to handle SELECT_TRIGGER_PROBABILITY separately.
+          if (action === 'SELECT_TRIGGER_PROBABILITY') {
+            if (this.state[currentStateIndex].segment) {
+              const probability = (message.result as unknown as Trigger).probability
+              this.state[currentStateIndex].segment.probability = probability
+              this.pushState()
+            }
+          }
+
           if (!knownActionsArray.includes(action)) {
+            console.log({ action, message })
             this.state[currentStateIndex].planExecution[action].result += message.result
             this.state[currentStateIndex].planExecution[action].done = message.done
             this.pushState()
