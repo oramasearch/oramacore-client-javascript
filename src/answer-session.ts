@@ -2,7 +2,6 @@ import { createId } from 'npm:@paralleldrive/cuid2@2.2.2'
 import { OramaInterface, safeJSONParse } from './common.ts'
 import { knownActionsArray } from './const.ts'
 import type { AnyObject, Nullable } from './index.ts'
-import type { SSEEvent } from './lib/event-stream.ts'
 import type { CreateAnswerSessionConfig } from './collection.ts'
 
 export type AnswerSessionConfig = {
@@ -108,7 +107,7 @@ export class AnswerSession {
     this.events = config.events
   }
 
-  public async *answerStream(data: AnswerConfig): AsyncGenerator<SSEEvent> {
+  public async *answerStream(data: AnswerConfig): AsyncGenerator<string> {
     // Resets the abort controller. This is necessary to avoid aborting the previous request if there is one.
     this.abortController = new AbortController()
 
@@ -168,22 +167,41 @@ export class AnswerSession {
         const data = safeJSONParse<any>(value.data)
 
         if (data.type === 'response') {
-          const { action, result, done } = safeJSONParse<any>(data.message)
-          console.log(data.message)
+          const { action, result } = safeJSONParse<any>(data.message)
+
           switch (action) {
             case 'GET_SEGMENT': {
-              const segment = safeJSONParse<Segment>(result)
-              this.state[currentStateIndex].segment = {
-                id: segment.id,
-                name: segment.name,
+              if (result !== null) {
+                const segment = safeJSONParse<Segment>(result)
+
+                // Sometimes the server can send corrupted data due to hallucinations.
+                // We need to check if the segment is valid before updating the state.
+                if (!segment) {
+                  break
+                }
+
+                this.state[currentStateIndex].segment = {
+                  id: segment.id,
+                  name: segment.name,
+                }
+                this.pushState()
               }
-              this.pushState()
+
               break
             }
             case 'GET_TRIGGER': {
-              const trigger = safeJSONParse<Trigger>(result)
-              this.state[currentStateIndex].segment = trigger
-              this.pushState()
+              if (result !== null) {
+                const trigger = safeJSONParse<Trigger>(result)
+
+                // Sometimes the server can send corrupted data due to hallucinations.
+                // We need to check if the segment is valid before updating the state.
+                if (!trigger) {
+                  break
+                }
+
+                this.state[currentStateIndex].segment = trigger
+                this.pushState()
+              }
               break
             }
             case 'OPTIMIZING_QUERY':
@@ -198,15 +216,16 @@ export class AnswerSession {
             case 'ANSWER_RESPONSE': {
               this.state[currentStateIndex].response += result
               this.messages[currentMessageIndex].content = this.state[currentStateIndex].response
+
+              yield this.state[currentStateIndex].response
+
               this.pushState()
               break
             }
+            default:
+              break
           }
         }
-      }
-
-      if (value !== undefined) {
-        yield value
       }
 
       if (done) {
@@ -224,7 +243,7 @@ export class AnswerSession {
     let acc = ''
 
     for await (const value of this.answerStream(data)) {
-      acc += value.data
+      acc += value
     }
 
     return acc
