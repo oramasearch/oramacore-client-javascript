@@ -243,3 +243,85 @@ Deno.test('CollectionManager: can insert a trigger with segment_id', async () =>
 
   assertEquals(segment.id, trigger.trigger.segment_id)
 })
+
+Deno.test('CollectionManager: can insert a system prompt', async () => {
+  const systemPrompt = await collectionManager.insertSystemPrompt({
+    id: '123',
+    name: 'Test System Prompt',
+    prompt: 'This is a test system prompt',
+    usage_mode: 'automatic',
+  })
+
+  assertEquals(systemPrompt.success, true)
+})
+
+Deno.test('CollectionManager: can insert a system prompt without an id', async () => {
+  const systemPrompt = await collectionManager.insertSystemPrompt({
+    name: 'Test System Prompt without ID',
+    prompt: 'This is a test system prompt without ID',
+    usage_mode: 'automatic',
+  })
+
+  assertEquals(systemPrompt.success, true)
+})
+
+Deno.test('CollectionManager: can get a system prompt', async () => {
+  await collectionManager.insertSystemPrompt({
+    id: '456',
+    name: 'Test System Prompt 123',
+    prompt: 'This is a test system prompt 123',
+    usage_mode: 'automatic',
+  })
+
+  const prompt = await collectionManager.getSystemPrompt('456')
+
+  assertEquals(prompt.system_prompt.name, 'Test System Prompt 123')
+  assertEquals(prompt.system_prompt.prompt, 'This is a test system prompt 123')
+  assertEquals(prompt.system_prompt.usage_mode, 'automatic')
+})
+
+Deno.test('CollectionManager: can get all system prompts', async () => {
+  const prompts = await collectionManager.getAllSystemPrompts()
+
+  // Considering the system prompts created in the previous tests
+  assertEquals(prompts.system_prompts.length, 3)
+})
+
+Deno.test('CollectionManager: can delete a system prompt', async () => {
+  await collectionManager.insertSystemPrompt({
+    id: 'xxx',
+    name: 'A new test system prompt',
+    prompt: 'This is a new test system prompt',
+    usage_mode: 'automatic',
+  })
+
+  const result = await collectionManager.deleteSystemPrompt('xxx')
+
+  const checkPrompt = await collectionManager.getSystemPrompt('xxx')
+
+  assertEquals(result.success, true)
+  assertEquals(checkPrompt.system_prompt, null)
+})
+
+Deno.test('CollectionManager: can update a system prompt', async () => {
+  await collectionManager.insertSystemPrompt({
+    id: 'yyy',
+    name: 'A new test system prompt',
+    prompt: 'This is a new test system prompt',
+    usage_mode: 'automatic',
+  })
+
+  const updatedPrompt = await collectionManager.updateSystemPrompt({
+    id: 'yyy',
+    name: 'Updated test system prompt',
+    prompt: 'This is an updated test system prompt',
+    usage_mode: 'automatic',
+  })
+
+  const checkUpdatedPrompt = await collectionManager.getSystemPrompt('yyy')
+
+  assertEquals(updatedPrompt.success, true)
+  assertEquals(checkUpdatedPrompt.system_prompt.name, 'Updated test system prompt')
+  assertEquals(checkUpdatedPrompt.system_prompt.prompt, 'This is an updated test system prompt')
+  assertEquals(checkUpdatedPrompt.system_prompt.usage_mode, 'automatic')
+})

@@ -129,3 +129,34 @@ export type UpdateTriggerResponse = {
   id: string
   trigger: Trigger
 }
+
+export type SystemPrompt = {
+  id: string
+  name: string
+  prompt: string
+  usage_mode: 'automatic' | 'manual'
+}
+
+export type InsertSystemPromptBody = {
+  id?: string
+  name: string
+  prompt: string
+  usage_mode: 'automatic' | 'manual'
+}
+
+export type SystemPromptValidationResponse = {
+  security: {
+    valid: boolean
+    reason: string
+    violations: string[]
+  }
+  technical: {
+    valid: boolean
+    reason: string
+    instruction_count: number
+  }
+  overall_assessment: {
+    valid: boolean
+    summary: string
+  }
+}

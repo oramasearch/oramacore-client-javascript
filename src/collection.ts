@@ -12,7 +12,13 @@ import type {
 } from './lib/types.ts'
 import { formatDuration } from './lib/utils.ts'
 import { AnswerSession, type Interaction, type Message } from './answer-session.ts'
-import type { InsertTriggerResponse, UpdateTriggerResponse } from './index.ts'
+import type {
+  InsertSystemPromptBody,
+  InsertTriggerResponse,
+  SystemPrompt,
+  SystemPromptValidationResponse,
+  UpdateTriggerResponse,
+} from './index.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -226,6 +232,61 @@ export class CollectionManager {
     return this.oramaInterface.request<UpdateTriggerResponse>({
       url: `/v1/collections/${this.collectionID}/triggers/update`,
       body: trigger,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public insertSystemPrompt(systemPrompt: InsertSystemPromptBody): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<UpdateTriggerResponse>({
+      url: `/v1/collections/${this.collectionID}/system_prompts/insert`,
+      body: systemPrompt,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public getSystemPrompt(id: string): Promise<{ system_prompt: SystemPrompt }> {
+    return this.oramaInterface.request<{ system_prompt: SystemPrompt }>({
+      url: `/v1/collections/${this.collectionID}/system_prompts/get`,
+      body: { system_prompt_id: id },
+      method: 'GET',
+      securityLevel: 'read',
+    })
+  }
+
+  public getAllSystemPrompts(): Promise<{ system_prompts: SystemPrompt[] }> {
+    return this.oramaInterface.request<{ system_prompts: SystemPrompt[] }>({
+      url: `/v1/collections/${this.collectionID}/system_prompts/all`,
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public deleteSystemPrompt(id: string): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/system_prompts/delete`,
+      body: { id },
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public updateSystemPrompt(systemPrompt: SystemPrompt): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/system_prompts/update`,
+      body: systemPrompt,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public validateSystemPrompt(
+    systemPrompt: SystemPrompt,
+  ): Promise<{ result: SystemPromptValidationResponse }> {
+    return this.oramaInterface.request<{ result: SystemPromptValidationResponse }>({
+      url: `/v1/collections/${this.collectionID}/system_prompts/validate`,
+      body: systemPrompt,
       method: 'POST',
       securityLevel: 'write',
     })
