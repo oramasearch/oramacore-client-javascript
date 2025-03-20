@@ -243,13 +243,13 @@ export class AnswerSession {
     let acc = ''
 
     for await (const value of this.answerStream(data)) {
-      acc += value
+      acc = value
     }
 
     return acc
   }
 
-  public async *getPlannedAnswerStream(
+  public async *reasonStream(
     data: AnswerConfig,
   ): AsyncGenerator<string> {
     for await (const _ of this.fetchPlannedAnswer(data)) {
@@ -257,7 +257,7 @@ export class AnswerSession {
     }
   }
 
-  public async getPlannedAnswer(data: AnswerConfig): Promise<string> {
+  public async reason(data: AnswerConfig): Promise<string> {
     // deno-lint-ignore no-empty
     for await (const _ of this.fetchPlannedAnswer(data)) {}
 
@@ -453,7 +453,6 @@ export class AnswerSession {
           }
 
           if (!knownActionsArray.includes(action)) {
-            console.log({ action, message })
             this.state[currentStateIndex].planExecution[action].result += message.result
             this.state[currentStateIndex].planExecution[action].done = message.done
             this.pushState()

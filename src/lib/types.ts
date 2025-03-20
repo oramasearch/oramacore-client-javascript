@@ -98,12 +98,14 @@ export type Segment = {
 }
 
 export type InsertSegmentBody = {
+  id?: string
   name: string
   description: string
   goal?: string
 }
 
 export type InsertTriggerBody = {
+  id?: string
   name: string
   description: string
   response: string
