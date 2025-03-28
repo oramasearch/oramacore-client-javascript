@@ -78,7 +78,7 @@ export type Interaction<D = AnyObject> = {
   segment: Nullable<Segment>
 }
 
-export type PlannedAnswerResponse = {
+export type ReasonAnswerResponse = {
   message: string
   action: string
 }
@@ -266,7 +266,7 @@ export class AnswerSession {
 
   private async *fetchPlannedAnswer(
     data: AnswerConfig,
-  ): AsyncGenerator<PlannedAnswerResponse> {
+  ): AsyncGenerator<ReasonAnswerResponse> {
     // Resets the abort controller. This is necessary to avoid aborting the previous request if there is one.
     this.abortController = new AbortController()
 
@@ -458,7 +458,7 @@ export class AnswerSession {
             this.pushState()
           }
 
-          yield message as unknown as PlannedAnswerResponse
+          yield message as unknown as ReasonAnswerResponse
         }
       }
 
