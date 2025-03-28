@@ -126,7 +126,6 @@ export type InsertTriggerResponse = {
 
 export type UpdateTriggerResponse = {
   success: boolean
-  id: string
   trigger: Trigger
 }
 

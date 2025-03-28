@@ -1,7 +1,8 @@
 {
   "name": "@orama/core",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "exports": "./src/index.ts",
+  "nodeModulesDir": "auto",
   "tasks": {
     "build": "deno run -A ./dnt.ts"
   },

@@ -1,4 +1,4 @@
-import { createId } from 'npm:@paralleldrive/cuid2@2.2.2'
+import { createId } from 'npm:@orama/cuid2@2.2.3'
 import { OramaInterface, safeJSONParse } from './common.ts'
 import { knownActionsArray } from './const.ts'
 import type { AnyObject, Nullable } from './index.ts'

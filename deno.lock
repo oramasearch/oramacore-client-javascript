@@ -23,6 +23,8 @@
     "jsr:@std/path@~0.225.2": "0.225.2",
     "jsr:@ts-morph/bootstrap@0.24": "0.24.0",
     "jsr:@ts-morph/common@0.24": "0.24.0",
+    "npm:@orama/cuid2@*": "2.2.3",
+    "npm:@orama/cuid2@2.2.3": "2.2.3",
     "npm:@paralleldrive/cuid2@2.2.2": "2.2.2",
     "npm:dedent@*": "1.5.3",
     "npm:dedent@1.5.3": "1.5.3"
@@ -133,6 +135,12 @@
   "npm": {
     "@noble/hashes@1.7.1": {
       "integrity": "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="
+    },
+    "@orama/cuid2@2.2.3": {
+      "integrity": "sha512-Lcak3chblMejdlSHgYU2lS2cdOhDpU6vkfIJH4m+YKvqQyLqs1bB8+w6NT1MG5bO12NUK2GFc34Mn2xshMIQ1g==",
+      "dependencies": [
+        "@noble/hashes"
+      ]
     },
     "@paralleldrive/cuid2@2.2.2": {
       "integrity": "sha512-ZOBkgDwEdoYVlSeRbYYXs0S9MejQofiVYoTbKzy/6GQa39/q5tQU2IX46+shYnUkpEl3wc+J6wRlar7r2EK2xA==",

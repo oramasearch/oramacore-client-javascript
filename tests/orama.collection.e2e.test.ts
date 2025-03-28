@@ -155,12 +155,14 @@ Deno.test('CollectionManager: update a segment', async () => {
 
 Deno.test('CollectionManager: create a trigger', async () => {
   const trigger = await collectionManager.insertTrigger({
+    id: '123',
     name: 'Test Trigger',
     description: 'This is a test trigger',
     response: 'This is a test response',
     segment_id: 'foo',
   })
 
+  assertEquals(trigger.trigger.id, '123')
   assertEquals(trigger.trigger.name, 'Test Trigger')
   assertEquals(trigger.trigger.description, 'This is a test trigger')
   assertEquals(trigger.trigger.response, 'This is a test response')
@@ -180,6 +182,7 @@ Deno.test('CollectionManager: get a trigger', async () => {
   assertEquals(trigger.trigger.name, 'A new test trigger')
   assertEquals(trigger.trigger.description, 'This is a new test trigger')
   assertEquals(trigger.trigger.response, 'This is a new test response')
+  assertEquals(trigger.trigger.segment_id, '123')
 })
 
 Deno.test('CollectionManager: get all triggers', async () => {
@@ -204,7 +207,7 @@ Deno.test('CollectionManager: delete a trigger', async () => {
   assertEquals(checkTrigger.trigger, null)
 })
 
-Deno.test.ignore('CollectionManager: update a trigger', async () => {
+Deno.test('CollectionManager: update a trigger', async () => {
   const newTrigger = await collectionManager.insertTrigger({
     name: 'A new test trigger',
     description: 'This is a new test trigger',
@@ -219,7 +222,7 @@ Deno.test.ignore('CollectionManager: update a trigger', async () => {
     response: 'This is an updated test response',
   })
 
-  const checkUpdatedTrigger = await collectionManager.getTrigger(updatedTrigger.id)
+  const checkUpdatedTrigger = await collectionManager.getTrigger(updatedTrigger.trigger.id)
 
   assertEquals(updatedTrigger.success, true)
   assertEquals(checkUpdatedTrigger.trigger.name, 'Updated test trigger')

@@ -19,6 +19,7 @@ import type {
   SystemPromptValidationResponse,
   UpdateTriggerResponse,
 } from './index.ts'
+import { Profile } from './profile.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -52,6 +53,7 @@ export class CollectionManager {
   private writeAPIKey?: string
   private readAPIKey?: string
   private oramaInterface: OramaInterface
+  private profile: Profile
 
   constructor(config: CollectionManagerConfig) {
     this.url = config.url
@@ -62,6 +64,11 @@ export class CollectionManager {
       baseURL: this.url,
       writeAPIKey: this.writeAPIKey,
       readAPIKey: this.readAPIKey,
+    })
+
+    this.profile = new Profile({
+      endpoint: this.url,
+      apiKey: this.readAPIKey!,
     })
   }
 
@@ -125,7 +132,7 @@ export class CollectionManager {
     })
   }
 
-  public async addHook(config: AddHookConfig): Promise<NewHookresponse> {
+  public async insertHook(config: AddHookConfig): Promise<NewHookresponse> {
     const body = {
       name: config.name,
       code: config.code,
@@ -290,5 +297,29 @@ export class CollectionManager {
       method: 'POST',
       securityLevel: 'write',
     })
+  }
+
+  public getIdentity(): string | undefined {
+    return this.profile.getIdentity()
+  }
+
+  public getUserId(): string {
+    return this.profile.getUserId()
+  }
+
+  public getAlias(): string | undefined {
+    return this.profile.getAlias()
+  }
+
+  public async identify(identity: string): Promise<void> {
+    await this.profile.identify(identity)
+  }
+
+  public async alias(alias: string): Promise<void> {
+    await this.profile.alias(alias)
+  }
+
+  public reset(): void {
+    this.profile.reset()
   }
 }
