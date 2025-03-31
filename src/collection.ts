@@ -41,6 +41,10 @@ type NewHookresponse = {
 }
 
 export type CreateAnswerSessionConfig = {
+  LLMConfig?: {
+    provider: 'openai' | 'fireworks' | 'together'
+    model: string
+  }
   initialMessages?: Message[]
   events?: {
     onStateChange: (state: Interaction[]) => void

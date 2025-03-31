@@ -90,8 +90,9 @@ export class AnswerSession {
   private oramaInterface: OramaInterface
   private abortController?: AbortController
   private events?: CreateAnswerSessionConfig['events']
-  public messages: Message[]
+  private LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
 
+  public messages: Message[]
   public state: Interaction[] = []
 
   constructor(config: AnswerSessionConfig) {
@@ -149,6 +150,11 @@ export class AnswerSession {
       visitor_id: data.visitorID,
       conversation_id: data.sessionID,
       messages: data.messages || [],
+      llm_config: null as Nullable<CreateAnswerSessionConfig['LLMConfig']>,
+    }
+
+    if (this.LLMConfig) {
+      body.llm_config = this.LLMConfig
     }
 
     const reqStream = await this.oramaInterface.requestStream({
@@ -313,6 +319,7 @@ export class AnswerSession {
         visitor_id: data.visitorID,
         conversation_id: data.sessionID,
         messages: data.messages || [],
+        llm_config: this.LLMConfig ? this.LLMConfig : null,
       },
       signal: this.abortController?.signal,
     })
