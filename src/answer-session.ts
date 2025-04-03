@@ -30,12 +30,19 @@ export type Message = {
   content: string
 }
 
+export type RelatedQuestionsConfig = {
+  enabled?: Nullable<boolean>
+  size?: Nullable<number>
+  format?: Nullable<'question' | 'query'>
+}
+
 export type AnswerConfig = {
   interactionID: string
   query: string
   visitorID: string
   sessionID: string
   messages?: Message[]
+  related?: Nullable<RelatedQuestionsConfig>
 }
 
 export type PlanAction = {
@@ -76,6 +83,7 @@ export type Interaction<D = AnyObject> = {
   errorMessage: Nullable<string>
   aborted: boolean
   segment: Nullable<Segment>
+  related: Nullable<string>
 }
 
 export type ReasonAnswerResponse = {
@@ -136,6 +144,7 @@ export class AnswerSession {
       plan: null,
       planExecution: {},
       segment: null,
+      related: data.related?.enabled ? '' : null,
     })
 
     // The current state index. We'll need to frequently access the last state to update it,
@@ -151,6 +160,7 @@ export class AnswerSession {
       conversation_id: data.sessionID,
       messages: data.messages || [],
       llm_config: null as Nullable<CreateAnswerSessionConfig['LLMConfig']>,
+      related: data.related,
     }
 
     if (this.LLMConfig) {
@@ -228,6 +238,11 @@ export class AnswerSession {
               this.pushState()
               break
             }
+            case 'RELATED_QUERIES': {
+              this.state[currentStateIndex].related += result
+              this.pushState()
+              break
+            }
             default:
               break
           }
@@ -300,6 +315,7 @@ export class AnswerSession {
       plan: null,
       planExecution: {},
       segment: null,
+      related: data.related?.enabled ? '' : null,
     })
 
     // The current state index. We'll need to frequently access the last state to update it,
@@ -320,6 +336,7 @@ export class AnswerSession {
         conversation_id: data.sessionID,
         messages: data.messages || [],
         llm_config: this.LLMConfig ? this.LLMConfig : null,
+        related: data.related,
       },
       signal: this.abortController?.signal,
     })
@@ -457,6 +474,15 @@ export class AnswerSession {
               this.state[currentStateIndex].segment.probability = probability
               this.pushState()
             }
+          }
+
+          // The server is streaming the related queries. These will be streamed as a JSON string,
+          // to be then parsed into an array of strings later. But sending a chunk at a time allows
+          // the user to create more interesting UIs.
+          if (action === 'RELATED_QUERIES') {
+            this.state[currentStateIndex].related += message.result
+            this.pushState()
+            break
           }
 
           if (!knownActionsArray.includes(action)) {
