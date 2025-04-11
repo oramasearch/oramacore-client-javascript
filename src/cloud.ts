@@ -58,37 +58,16 @@ export class CloudManager {
   }
 
   async insert(data: object[] | object): Promise<InsertResponse> {
-    if (!this.index) {
-      throw new Error('No index set. Please set an index before inserting data.')
-    }
+    this.ensureIndexExists('inserting data')
+    await this.ensureTransactionExists()
 
-    if (!this.transactionID) {
-      await this.checkTransaction()
-
-      if (!this.transactionID) {
-        throw new Error('No active transaction found. Please start a transaction first.')
-      }
-    }
-
-    if (!Array.isArray(data)) {
-      data = [data]
-    }
-
-    return this.request<InsertResponse>(`/api/v2/transaction/${this.transactionID}/insert`, data)
+    const formattedData = Array.isArray(data) ? data : [data]
+    return this.request<InsertResponse>(`/api/v2/transaction/${this.transactionID}/insert`, formattedData)
   }
 
   async delete(documents: string[]): Promise<void> {
-    if (!this.index) {
-      throw new Error('No index set. Please set an index before deleting data.')
-    }
-
-    if (!this.transactionID) {
-      await this.checkTransaction()
-
-      if (!this.transactionID) {
-        throw new Error('No active transaction found. Please start a transaction first.')
-      }
-    }
+    this.ensureIndexExists('deleting data')
+    await this.ensureTransactionExists()
 
     return this.request<void>(`/api/v2/transaction/${this.transactionID}/delete`, documents)
   }
@@ -98,10 +77,7 @@ export class CloudManager {
   }
 
   commit(): Promise<void> {
-    if (!this.transactionID) {
-      throw new Error('No active transaction found. Please start a transaction first.')
-    }
-
+    this.ensureTransactionExists(false)
     return this.request<void>(`/api/v2/transaction/${this.transactionID}/commit`)
   }
 
@@ -117,6 +93,22 @@ export class CloudManager {
     }
 
     return response
+  }
+
+  private ensureIndexExists(operation: string): void {
+    if (!this.index) {
+      throw new Error(`No index set. Please set an index before ${operation}.`)
+    }
+  }
+
+  private async ensureTransactionExists(checkExisting: boolean = true): Promise<void> {
+    if (!this.transactionID && checkExisting) {
+      await this.checkTransaction()
+    }
+
+    if (!this.transactionID) {
+      throw new Error('No active transaction found. Please start a transaction first.')
+    }
   }
 
   private async request<R = unknown>(path: string, body = {}, method = 'POST'): Promise<R> {
