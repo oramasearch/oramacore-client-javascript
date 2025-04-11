@@ -65,6 +65,15 @@ export class CloudManager {
     return this.request<InsertResponse>(`/api/v2/transaction/${this.transactionID}/insert`, formattedData)
   }
 
+  async update(data: object[] | object): Promise<void> {
+    this.ensureIndexExists('updating data')
+    await this.ensureTransactionExists()
+
+    const formattedData = Array.isArray(data) ? data : [data]
+    // "insert" is actually an "upsert" operation in the context of transactions
+    return this.request<void>(`/api/v2/transaction/${this.transactionID}/insert`, formattedData)
+  }
+
   async delete(documents: string[]): Promise<void> {
     this.ensureIndexExists('deleting data')
     await this.ensureTransactionExists()
