@@ -78,18 +78,19 @@ export function isServerRuntime() {
   }
 
   // Node.js
-  // @ts-expect-error - process is not defined
+  // @ts-ignore - process is not defined
   if (typeof process !== 'undefined' && process.versions?.node) {
     return true
   }
 
   // Deno
+  // @ts-ignore - Deno is not defined
   if (typeof Deno !== 'undefined' && typeof Deno.version !== 'undefined') {
     return true
   }
 
   // Bun
-  // @ts-expect-error - Bun is not defined
+  // @ts-ignore - Bun is not defined
   if (typeof Bun !== 'undefined' && typeof Bun.version !== 'undefined') {
     return true
   }
@@ -105,7 +106,7 @@ export function isServerRuntime() {
   }
 
   // AWS Lambda or generic serverless
-  // @ts-expect-error - process is not defined
+  // @ts-ignore - process is not defined
   if (typeof process !== 'undefined' && process?.env.AWS_LAMBDA_FUNCTION_NAME) {
     return true
   }
