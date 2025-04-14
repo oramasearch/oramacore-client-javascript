@@ -14,6 +14,7 @@ export type AnswerSessionConfig = {
   initialMessages?: Message[]
   events?: CreateAnswerSessionConfig['events']
   sessionID?: string
+  LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
 }
 
 type SSEMEssage = {
@@ -117,6 +118,7 @@ export class AnswerSession {
       readAPIKey: this.readAPIKey,
     })
 
+    this.LLMConfig = config.LLMConfig
     this.messages = config.initialMessages || []
     this.events = config.events
     this.sessionID = config.sessionID || createId()
@@ -253,6 +255,8 @@ export class AnswerSession {
               break
             }
             default:
+              console.log(action)
+              console.log(result)
               break
           }
         }
