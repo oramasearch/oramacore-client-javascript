@@ -78,6 +78,35 @@ const result = await collectionManager.search({
 })
 ```
 
+### The Cloud Manager
+
+You can use this SDK to manage your OramaCloud instances too.
+
+When creating a new **REST API** data source, you can use the **transaction APIs** to correctly update your collections and indexes:
+
+```js
+import { CloudManager } from '@orama/core'
+
+const cloudManager = new CloudManager({
+  url: 'your-api-endpoint',
+  collectionID: 'your-collection-id',
+  privateAPIKey: 'your-private-api-key',
+})
+
+cloudManager.setIndex('your-index-id')
+
+const transaction = await cloudManager.newTransaction()
+
+await transaction.insertDocuments([
+  { id: '123', title: 'Quick Brown fox' },
+  { id: '456', title: 'Jumping over a lazy dog' }
+])
+
+await transaction.deleteDocuments(['789'])
+
+await transaction.commit()
+```
+
 For the full API reference, please go to
 [https://docs.oramacore.com/docs/apis/introduction#javascript-sdk](https://docs.oramacore.com/docs/apis/introduction#javascript-sdk).
 
