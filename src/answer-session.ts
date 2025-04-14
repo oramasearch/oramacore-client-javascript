@@ -1,6 +1,9 @@
 import { createId } from 'npm:@orama/cuid2@2.2.3'
 import { OramaInterface, safeJSONParse } from './common.ts'
 import { knownActionsArray } from './const.ts'
+import { hasLocalStorage, isServerRuntime } from './lib/utils.ts'
+import { DEFAULT_SERVER_USER_ID, LOCAL_STORAGE_USER_ID_KEY } from './constants.ts'
+
 import type { AnyObject, Nullable } from './index.ts'
 import type { CreateAnswerSessionConfig } from './collection.ts'
 
@@ -10,6 +13,7 @@ export type AnswerSessionConfig = {
   collectionID: string
   initialMessages?: Message[]
   events?: CreateAnswerSessionConfig['events']
+  sessionID?: string
 }
 
 type SSEMEssage = {
@@ -37,10 +41,10 @@ export type RelatedQuestionsConfig = {
 }
 
 export type AnswerConfig = {
-  interactionID: string
   query: string
-  visitorID: string
-  sessionID: string
+  interactionID?: string
+  visitorID?: string
+  sessionID?: string
   messages?: Message[]
   related?: Nullable<RelatedQuestionsConfig>
 }
@@ -99,6 +103,7 @@ export class AnswerSession {
   private abortController?: AbortController
   private events?: CreateAnswerSessionConfig['events']
   private LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
+  private sessionID?: string
 
   public messages: Message[]
   public state: Interaction[] = []
@@ -114,9 +119,13 @@ export class AnswerSession {
 
     this.messages = config.initialMessages || []
     this.events = config.events
+    this.sessionID = config.sessionID || createId()
   }
 
   public async *answerStream(data: AnswerConfig): AsyncGenerator<string> {
+    // Make sure the config contains all the necessary fields.
+    data = this.enrichConfig(data)
+
     // Resets the abort controller. This is necessary to avoid aborting the previous request if there is one.
     this.abortController = new AbortController()
 
@@ -288,6 +297,9 @@ export class AnswerSession {
   private async *fetchPlannedAnswer(
     data: AnswerConfig,
   ): AsyncGenerator<ReasonAnswerResponse> {
+    // Make sure the config contains all the necessary fields.
+    data = this.enrichConfig(data)
+
     // Resets the abort controller. This is necessary to avoid aborting the previous request if there is one.
     this.abortController = new AbortController()
 
@@ -525,4 +537,38 @@ export class AnswerSession {
   private pushState() {
     this.events?.onStateChange?.(this.state)
   }
+
+  private enrichConfig(config: AnswerConfig) {
+    if (!config.visitorID) {
+      config.visitorID = getUserID()
+    }
+
+    if (!config.interactionID) {
+      config.interactionID = createId()
+    }
+
+    if (!config.sessionID) {
+      config.sessionID = this.sessionID
+    }
+
+    console.log(config)
+
+    return config
+  }
+}
+
+function getUserID() {
+  if (isServerRuntime()) {
+    return DEFAULT_SERVER_USER_ID
+  }
+
+  if (hasLocalStorage) {
+    const id = localStorage.getItem(LOCAL_STORAGE_USER_ID_KEY)
+
+    if (id) {
+      return id
+    }
+  }
+
+  return createId()
 }

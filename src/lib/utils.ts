@@ -70,3 +70,46 @@ export function debounce(func: (...args: unknown[]) => unknown, delay: number) {
     debounceTimer = setTimeout(() => func.apply(this, args), delay)
   }
 }
+
+export function isServerRuntime() {
+  // Browser detection: if window or document exists, you're definitely in a browser
+  if (typeof window !== 'undefined' || typeof document !== 'undefined') {
+    return false
+  }
+
+  // Node.js
+  // @ts-expect-error - process is not defined
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    return true
+  }
+
+  // Deno
+  if (typeof Deno !== 'undefined' && typeof Deno.version !== 'undefined') {
+    return true
+  }
+
+  // Bun
+  // @ts-expect-error - Bun is not defined
+  if (typeof Bun !== 'undefined' && typeof Bun.version !== 'undefined') {
+    return true
+  }
+
+  // Cloudflare Workers, Vercel Edge, and other serverless environments often run in a V8 isolate
+  if (
+    typeof globalThis !== 'undefined' &&
+    typeof globalThis.Response === 'function' &&
+    typeof globalThis.fetch === 'function' &&
+    typeof globalThis.navigator === 'undefined' // real browser usually has navigator
+  ) {
+    return true
+  }
+
+  // AWS Lambda or generic serverless
+  // @ts-expect-error - process is not defined
+  if (typeof process !== 'undefined' && process?.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return true
+  }
+
+  // Default to false if it looks like a browser
+  return false
+}

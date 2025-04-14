@@ -6,20 +6,21 @@ const collectionID = Deno.env.get('ORAMA_CLOUD_COLLECTION_ID')
 const indexID = Deno.env.get('ORAMA_CLOUD_INDEX_ID')
 const privateAPIKey = Deno.env.get('ORAMA_CLOUD_PRIVATE_API_KEY')
 
+let testMode = 'test'
+
 if (!managerURL || !collectionID || !indexID || !privateAPIKey) {
   console.log('Not running cloud tests, missing environment variables')
-
-  Deno.exit(0)
+  testMode = 'skip'
 }
 
-Deno.test('CloudManager - setIndex and get open transaction', async () => {
+Deno[testMode as 'test']('CloudManager - setIndex and get open transaction', async () => {
   const cloudManager = new CloudManager({
-    url: managerURL,
-    collectionID: collectionID,
-    privateAPIKey: privateAPIKey,
+    url: managerURL!,
+    collectionID: collectionID!,
+    privateAPIKey: privateAPIKey!,
   })
 
-  await cloudManager.setIndex(indexID)
+  await cloudManager.setIndex(indexID!)
 
   const hasOpenTransaction = await cloudManager.hasOpenTransaction()
 
