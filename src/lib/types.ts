@@ -1,3 +1,8 @@
+import type { ZodType } from 'npm:zod@3.24.3'
+
+import type { Message } from '../answer-session.ts'
+import type { LLMConfig } from '../collection.ts'
+
 export type Nullable<T = unknown> = T | null
 
 export type Maybe<T = unknown> = T | undefined
@@ -158,4 +163,49 @@ export type SystemPromptValidationResponse = {
     valid: boolean
     summary: string
   }
+}
+
+export type Tool = {
+  id: string
+  name: string
+  description: string
+  parameters: string
+}
+
+export type InsertToolBody = {
+  id?: string
+  name: string
+  description: string
+  parameters: string | AnyObject | ZodType
+}
+
+export type UpdateToolBody = {
+  id: string
+  name?: string
+  description?: string
+  parameters?: string | AnyObject | ZodType
+}
+
+export type ExecuteToolsBody = {
+  tool_ids?: string[]
+  messages: Message[]
+  llm_config?: LLMConfig
+}
+
+export type FunctionCall = {
+  name: string
+  arguments: string
+}
+
+export type FunctionCallParsed = {
+  name: string
+  arguments: AnyObject
+}
+
+export type ExecuteToolsResponse = {
+  results: Nullable<FunctionCall[]>
+}
+
+export type ExecuteToolsParsedResponse = {
+  results: Nullable<FunctionCallParsed[]>
 }

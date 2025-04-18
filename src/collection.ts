@@ -1,4 +1,3 @@
-import { OramaInterface } from './common.ts'
 import type {
   AnyObject,
   Hook,
@@ -10,16 +9,27 @@ import type {
   Segment,
   Trigger,
 } from './lib/types.ts'
-import { formatDuration } from './lib/utils.ts'
-import { AnswerSession, type Interaction, type Message } from './answer-session.ts'
 import type {
+  ExecuteToolsBody,
+  ExecuteToolsParsedResponse,
+  ExecuteToolsResponse,
   InsertSystemPromptBody,
+  InsertToolBody,
   InsertTriggerResponse,
   SystemPrompt,
   SystemPromptValidationResponse,
+  Tool,
+  UpdateToolBody,
   UpdateTriggerResponse,
 } from './index.ts'
+import type { Interaction, Message } from './answer-session.ts'
+
+import { ZodType } from 'npm:zod@3.24.3'
+import { zodToJsonSchema } from 'npm:zod-to-json-schema@3.24.5'
 import { Profile } from './profile.ts'
+import { AnswerSession } from './answer-session.ts'
+import { OramaInterface } from './common.ts'
+import { formatDuration } from './lib/utils.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -303,6 +313,97 @@ export class CollectionManager {
       method: 'POST',
       securityLevel: 'write',
     })
+  }
+
+  public insertTool(tool: InsertToolBody) {
+    let parameters: string
+
+    switch (true) {
+      case typeof tool.parameters === 'string':
+        parameters = tool.parameters
+        break
+      case tool.parameters instanceof ZodType:
+        parameters = JSON.stringify(zodToJsonSchema(tool.parameters))
+        break
+      case typeof tool.parameters === 'object':
+        parameters = JSON.stringify(tool.parameters)
+        break
+      default:
+        throw new Error('Invalid parameters type. Must be string, object or ZodType')
+    }
+
+    return this.oramaInterface.request<void>({
+      url: `/v1/collections/${this.collectionID}/tools/insert`,
+      body: {
+        ...tool,
+        parameters,
+      },
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public getTool(id: string): Promise<{ tool: Tool }> {
+    return this.oramaInterface.request<{ tool: Tool }>({
+      url: `/v1/collections/${this.collectionID}/tools/get`,
+      body: { tool_id: id },
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public getAllTools(): Promise<{ tools: Tool[] }> {
+    return this.oramaInterface.request<{ tools: Tool[] }>({
+      url: `/v1/collections/${this.collectionID}/tools/all`,
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public deleteTool(id: string): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/tools/delete`,
+      body: { id },
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public updateTool(tool: UpdateToolBody): Promise<{ success: boolean }> {
+    return this.oramaInterface.request<{ success: boolean }>({
+      url: `/v1/collections/${this.collectionID}/tools/update`,
+      body: tool,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public async executeTools(tools: ExecuteToolsBody): Promise<ExecuteToolsParsedResponse> {
+    const response = await this.oramaInterface.request<ExecuteToolsResponse>({
+      url: `/v1/collections/${this.collectionID}/tools/run`,
+      body: tools,
+      method: 'POST',
+      securityLevel: 'read',
+    })
+
+    console.log(response)
+
+    if (response.results) {
+      const parsedResults = response.results.map((result) => {
+        return {
+          name: result.name,
+          arguments: JSON.parse(result.arguments),
+        }
+      })
+
+      return {
+        results: parsedResults,
+      }
+    }
+
+    return {
+      results: null,
+    }
   }
 
   public getIdentity(): string | undefined {

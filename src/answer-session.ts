@@ -255,8 +255,6 @@ export class AnswerSession {
               break
             }
             default:
-              console.log(action)
-              console.log(result)
               break
           }
         }
@@ -554,8 +552,6 @@ export class AnswerSession {
     if (!config.sessionID) {
       config.sessionID = this.sessionID
     }
-
-    console.log(config)
 
     return config
   }

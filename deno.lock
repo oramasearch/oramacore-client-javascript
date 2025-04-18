@@ -28,7 +28,10 @@
     "npm:@orama/cuid2@2.2.3": "2.2.3",
     "npm:@paralleldrive/cuid2@2.2.2": "2.2.2",
     "npm:dedent@*": "1.5.3",
-    "npm:dedent@1.5.3": "1.5.3"
+    "npm:dedent@1.5.3": "1.5.3",
+    "npm:zod-to-json-schema@*": "3.24.5_zod@3.24.3",
+    "npm:zod-to-json-schema@3.24.5": "3.24.5_zod@3.24.3",
+    "npm:zod@3.24.3": "3.24.3"
   },
   "jsr": {
     "@david/code-block-writer@13.0.3": {
@@ -154,6 +157,15 @@
     },
     "dedent@1.5.3": {
       "integrity": "sha512-NHQtfOOW68WD8lgypbLA5oT+Bt0xXJhiYvoR6SmmNXZfpzOGXwdKWmcwG8N7PwVVWV3eF/68nmD9BaJSsTBhyQ=="
+    },
+    "zod-to-json-schema@3.24.5_zod@3.24.3": {
+      "integrity": "sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g==",
+      "dependencies": [
+        "zod"
+      ]
+    },
+    "zod@3.24.3": {
+      "integrity": "sha512-HhY1oqzWCQWuUqvBFnsyrtZRhyPeR7SUGv+C4+MsisMuVfSPx8HpwWqH8tRahSlt6M3PiFAcoeFhZAqIXTxoSg=="
     }
   },
   "redirects": {
