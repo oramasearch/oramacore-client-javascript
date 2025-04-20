@@ -162,6 +162,9 @@ export class AnswerSession {
       related: data.related?.enabled ? '' : null,
     })
 
+    // Let's set a new state for the current interaction.
+    this.pushState()
+
     // The current state index. We'll need to frequently access the last state to update it,
     // so it might be worth it to simplify the process by storing the index.
     // The same goes for the current message index.
@@ -344,6 +347,9 @@ export class AnswerSession {
       segment: null,
       related: data.related?.enabled ? '' : null,
     })
+
+    // Push the new state.
+    this.pushState()
 
     // The current state index. We'll need to frequently access the last state to update it,
     // so it might be worth it to simplify the process by storing the index.
@@ -576,6 +582,13 @@ export class AnswerSession {
     this.abortController.abort()
     this.abortController = undefined
     this.state[this.state.length - 1].aborted = true
+  }
+
+  public clearSession() {
+    this.messages = []
+    this.state = []
+
+    this.pushState()
   }
 
   private pushState() {
