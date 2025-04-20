@@ -105,6 +105,7 @@ export class AnswerSession {
   private events?: CreateAnswerSessionConfig['events']
   private LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
   private sessionID?: string
+  private lastInteractionParams?: AnswerConfig & { planned: boolean }
 
   public messages: Message[]
   public state: Interaction[] = []
@@ -125,6 +126,9 @@ export class AnswerSession {
   }
 
   public async *answerStream(data: AnswerConfig): AsyncGenerator<string> {
+    // Save the last interaction params in case we need to regenerate the last answer.
+    this.lastInteractionParams = { ...data, planned: false }
+
     // Make sure the config contains all the necessary fields.
     data = this.enrichConfig(data)
 
@@ -272,6 +276,9 @@ export class AnswerSession {
   }
 
   public async answer(data: AnswerConfig): Promise<string> {
+    // Save the last interaction params in case we need to regenerate the last answer.
+    this.lastInteractionParams = { ...data, planned: false }
+
     let acc = ''
 
     for await (const value of this.answerStream(data)) {
@@ -284,12 +291,18 @@ export class AnswerSession {
   public async *reasonStream(
     data: AnswerConfig,
   ): AsyncGenerator<string> {
+    // Save the last interaction params in case we need to regenerate the last answer.
+    this.lastInteractionParams = { ...data, planned: true }
+
     for await (const _ of this.fetchPlannedAnswer(data)) {
       yield this.state[this.state.length - 1].response
     }
   }
 
   public async reason(data: AnswerConfig): Promise<string> {
+    // Save the last interaction params in case we need to regenerate the last answer.
+    this.lastInteractionParams = { ...data, planned: true }
+
     // deno-lint-ignore no-empty
     for await (const _ of this.fetchPlannedAnswer(data)) {}
 
@@ -520,6 +533,35 @@ export class AnswerSession {
     // We can now mark the interaction as not loading anymore.
     this.state[currentStateIndex].loading = false
     this.pushState()
+  }
+
+  public async regenerateLast({ stream = true } = {}): Promise<string | AsyncGenerator<string>> {
+    if (this.state.length === 0 || this.messages.length === 0) {
+      throw new Error('No messages to regenerate')
+    }
+
+    const isLastMessageAssistant = this.messages.at(-1)?.role === 'assistant'
+
+    if (!isLastMessageAssistant) {
+      throw new Error('Last message is not an assistant message')
+    }
+
+    this.messages.pop()
+    this.state.pop()
+
+    if (this.lastInteractionParams?.planned) {
+      if (stream) {
+        return this.reasonStream(this.lastInteractionParams as AnswerConfig)
+      }
+
+      return this.reason(this.lastInteractionParams as AnswerConfig)
+    }
+
+    if (stream) {
+      return this.answerStream(this.lastInteractionParams as AnswerConfig)
+    }
+
+    return this.answer(this.lastInteractionParams as AnswerConfig)
   }
 
   public abort() {
