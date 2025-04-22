@@ -173,17 +173,17 @@ export type Tool = {
 }
 
 export type InsertToolBody = {
-  id?: string
-  name: string
+  id: string
   description: string
   parameters: string | AnyObject | ZodType
+  code?: string
 }
 
 export type UpdateToolBody = {
   id: string
-  name?: string
   description?: string
   parameters?: string | AnyObject | ZodType
+  code?: string
 }
 
 export type ExecuteToolsBody = {
@@ -206,6 +206,24 @@ export type ExecuteToolsResponse = {
   results: Nullable<FunctionCall[]>
 }
 
-export type ExecuteToolsParsedResponse = {
-  results: Nullable<FunctionCallParsed[]>
+export type ExecuteToolsFunctionResult<T = AnyObject> = {
+  functionResult: {
+    tool_id: string
+    result: T
+  }
+}
+
+export type ExecuteToolsParametersResult<T = AnyObject> = {
+  functionParameters: {
+    tool_id: string
+    result: T
+  }
+}
+
+export type ExecuteToolsResult<T = AnyObject> =
+  | ExecuteToolsFunctionResult<T>
+  | ExecuteToolsParametersResult<T>
+
+export type ExecuteToolsParsedResponse<T = AnyObject> = {
+  results: Nullable<ExecuteToolsResult<T>[]>
 }

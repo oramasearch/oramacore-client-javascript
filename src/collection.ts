@@ -12,7 +12,7 @@ import type {
 import type {
   ExecuteToolsBody,
   ExecuteToolsParsedResponse,
-  ExecuteToolsResponse,
+  ExecuteToolsResult,
   InsertSystemPromptBody,
   InsertToolBody,
   InsertTriggerResponse,
@@ -378,8 +378,10 @@ export class CollectionManager {
     })
   }
 
-  public async executeTools(tools: ExecuteToolsBody): Promise<ExecuteToolsParsedResponse> {
-    const response = await this.oramaInterface.request<ExecuteToolsResponse>({
+  public async executeTools<Response = AnyObject>(
+    tools: ExecuteToolsBody,
+  ): Promise<ExecuteToolsParsedResponse<Response>> {
+    const response = await this.oramaInterface.request<ExecuteToolsParsedResponse<string>>({
       url: `/v1/collections/${this.collectionID}/tools/run`,
       body: tools,
       method: 'POST',
@@ -389,15 +391,28 @@ export class CollectionManager {
     console.log(response)
 
     if (response.results) {
-      const parsedResults = response.results.map((result) => {
-        return {
-          name: result.name,
-          arguments: JSON.parse(result.arguments),
-        }
-      })
-
       return {
-        results: parsedResults,
+        results: response.results.map((result): ExecuteToolsResult<Response> => {
+          if ('functionResult' in result) {
+            return {
+              functionResult: {
+                tool_id: result.functionResult.tool_id,
+                result: JSON.parse(result.functionResult.result) as Response,
+              },
+            }
+          }
+
+          if ('functionParameters' in result) {
+            return {
+              functionParameters: {
+                tool_id: result.functionParameters.tool_id,
+                result: JSON.parse(result.functionParameters.result) as Response,
+              },
+            }
+          }
+
+          return result as unknown as ExecuteToolsResult<Response>
+        }),
       }
     }
 
