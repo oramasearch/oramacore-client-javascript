@@ -74,6 +74,10 @@ export class CloudManager {
   }
 
   async newTransaction(): Promise<Transaction> {
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource() to set a datasource ID.')
+    }
+
     const transaction = new Transaction({
       collectionID: this.collectionID,
       privateAPIKey: this.privateAPIKey,
