@@ -23,17 +23,17 @@ export class CloudManager {
   private url: string
   private collectionID: string
   private privateAPIKey: string
-  private index: Nullable<string>
+  private datasourceID: Nullable<string>
   private transactionID: Nullable<string> = null
 
   constructor(config: CloudManagerConfig) {
     this.url = config.url
     this.collectionID = config.collectionID
     this.privateAPIKey = config.privateAPIKey
-    this.index = config.defaultIndex ?? null
+    this.datasourceID = config.defaultIndex ?? null
   }
 
-  async setIndex(id: string) {
+  async setDataSource(id: string) {
     const isTransactionOpen = await this.checkTransaction()
 
     if (isTransactionOpen.transactionId) {
@@ -44,7 +44,7 @@ export class CloudManager {
       throw new Error('Cannot set index while inside a transaction')
     }
 
-    this.index = id
+    this.datasourceID = id
   }
 
   async hasOpenTransaction(): Promise<boolean> {
@@ -63,7 +63,7 @@ export class CloudManager {
       collectionID: this.collectionID,
       privateAPIKey: this.privateAPIKey,
       url: this.url,
-      index: this.index,
+      datasourceID: this.datasourceID,
     })
   }
 
@@ -78,7 +78,7 @@ export class CloudManager {
       collectionID: this.collectionID,
       privateAPIKey: this.privateAPIKey,
       url: this.url,
-      index: this.index,
+      datasourceID: this.datasourceID,
     })
 
     await transaction.startTransaction()
@@ -88,7 +88,7 @@ export class CloudManager {
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
     const response = await request<GetTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/get-open-transaction`,
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/get-open-transaction`,
       {},
       this.privateAPIKey,
       this.url,
@@ -107,7 +107,7 @@ type TransactionConfig = {
   collectionID: string
   privateAPIKey: string
   url: string
-  index: Nullable<string>
+  datasourceID: Nullable<string>
 }
 
 class Transaction {
@@ -115,19 +115,19 @@ class Transaction {
   private collectionID: string
   private privateAPIKey: string
   private url: string
-  private index: Nullable<string>
+  private datasourceID: Nullable<string>
 
   constructor(config: TransactionConfig) {
     this.collectionID = config.collectionID
     this.privateAPIKey = config.privateAPIKey
     this.url = config.url
-    this.index = config.index
+    this.datasourceID = config.datasourceID
   }
 
   async startTransaction(): Promise<Transaction> {
     const response = await request<StartTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/start-transaction`,
-      { index: this.index },
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
+      { index: this.datasourceID },
       this.privateAPIKey,
       this.url,
     )
@@ -234,7 +234,7 @@ class Transaction {
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
     const response = await request<GetTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/get-open-transaction`,
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/get-open-transaction`,
       {},
       this.privateAPIKey,
       this.url,
