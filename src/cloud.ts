@@ -131,7 +131,7 @@ class Transaction {
   async startTransaction(): Promise<Transaction> {
     const response = await request<StartTransactionResponse>(
       `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
-      { index: this.datasourceID },
+      {},
       this.privateAPIKey,
       this.url,
     )
