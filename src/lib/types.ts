@@ -70,6 +70,7 @@ export type SearchParams = {
   where?: AnyObject
   facets?: AnyObject
   indexes?: string[]
+  datasourceIDs?: string[]
 }
 
 export type Hit<T = AnyObject> = {

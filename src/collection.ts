@@ -96,10 +96,14 @@ export class CollectionManager {
 
   public async search<R = AnyObject>(query: SearchParams): Promise<SearchResult<R>> {
     const start = +new Date()
+    const { datasourceIDs, indexes, ...restQuery } = query
 
     const result = await this.oramaInterface.request<Omit<SearchResult<R>, 'elapsed'>>({
       url: `/v1/collections/${this.collectionID}/search`,
-      body: query,
+      body: {
+        ...restQuery,
+        indexes: datasourceIDs || indexes,
+      },
       method: 'POST',
       securityLevel: 'read-query',
     })
