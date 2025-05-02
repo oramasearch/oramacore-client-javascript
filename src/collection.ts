@@ -1,3 +1,6 @@
+import { ZodType } from 'npm:zod@3.24.3'
+import { zodToJsonSchema } from 'npm:zod-to-json-schema@3.24.5'
+
 import type {
   AnyObject,
   Hook,
@@ -24,8 +27,6 @@ import type {
 } from './index.ts'
 import type { Interaction, Message } from './answer-session.ts'
 
-import { ZodType } from 'npm:zod@3.24.3'
-import { zodToJsonSchema } from 'npm:zod-to-json-schema@3.24.5'
 import { Profile } from './profile.ts'
 import { AnswerSession } from './answer-session.ts'
 import { OramaInterface } from './common.ts'
@@ -63,6 +64,11 @@ export type CreateAnswerSessionConfig = {
   }
 }
 
+export type CreateIndexParams = {
+  id?: string
+  embeddings?: 'automatic' | 'all_properties' | string[]
+}
+
 export class CollectionManager {
   private url: string
   private collectionID: string
@@ -88,32 +94,6 @@ export class CollectionManager {
     })
   }
 
-  public async insert(documents: AnyObject[] | AnyObject): Promise<void> {
-    if (!Array.isArray(documents)) {
-      documents = [documents]
-    }
-
-    await this.oramaInterface.request<void, AnyObject[]>({
-      url: `/v1/collections/${this.collectionID}/insert`,
-      body: documents,
-      method: 'POST',
-      securityLevel: 'write',
-    })
-  }
-
-  public async delete(documentIDs: string[] | string): Promise<void> {
-    if (!Array.isArray(documentIDs)) {
-      documentIDs = [documentIDs]
-    }
-
-    await this.oramaInterface.request({
-      url: `/v1/collections/${this.collectionID}/delete`,
-      body: documentIDs,
-      method: 'POST',
-      securityLevel: 'write',
-    })
-  }
-
   public async search<R = AnyObject>(query: SearchParams): Promise<SearchResult<R>> {
     const start = +new Date()
 
@@ -133,6 +113,50 @@ export class CollectionManager {
         formatted: formatDuration(elapsed),
       },
     }
+  }
+
+  public getStats(collectionID: string): Promise<AnyObject> {
+    return this.oramaInterface.request<AnyObject>({
+      url: `/v1/collections/${collectionID}/stats`,
+      method: 'GET',
+      securityLevel: 'read-query',
+    })
+  }
+
+  public async createIndex(config: CreateIndexParams): Promise<void> {
+    const body: AnyObject = {
+      id: config.id,
+      embedding: config.embeddings,
+    }
+
+    await this.oramaInterface.request<void>({
+      url: `/v1/collections/${this.collectionID}/indexes/create`,
+      body,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public async deleteIndex(indexID: string): Promise<void> {
+    await this.oramaInterface.request<void>({
+      url: `/v1/collections/${this.collectionID}/indexes/delete`,
+      body: { index_id_to_delete: indexID },
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public setIndex(id: string): Index {
+    return new Index(this.collectionID, id, this.url, this.writeAPIKey, this.readAPIKey)
+  }
+
+  public getAllDocsInCollection(id: string): Promise<AnyObject[]> {
+    return this.oramaInterface.request<AnyObject[]>({
+      url: `/v1/collections/list`,
+      method: 'POST',
+      body: { id },
+      securityLevel: 'write',
+    })
   }
 
   public createAnswerSession(config?: CreateAnswerSessionConfig): AnswerSession {
@@ -388,8 +412,6 @@ export class CollectionManager {
       securityLevel: 'read',
     })
 
-    console.log(response)
-
     if (response.results) {
       return {
         results: response.results.map((result): ExecuteToolsResult<Response> => {
@@ -443,5 +465,56 @@ export class CollectionManager {
 
   public reset(): void {
     this.profile.reset()
+  }
+}
+
+export class Index {
+  private indexID: string
+  private collectionID: string
+  private oramaInterface: OramaInterface
+
+  constructor(collectionID: string, indexID: string, url: string, writeAPIKey?: string, readAPIKey?: string) {
+    this.indexID = indexID
+    this.collectionID = collectionID
+    this.oramaInterface = new OramaInterface({
+      baseURL: url,
+      writeAPIKey: writeAPIKey,
+      readAPIKey: readAPIKey,
+    })
+  }
+
+  public async reindex(): Promise<void> {
+    await this.oramaInterface.request<void>({
+      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/reindex`,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public async insertDocuments(documents: AnyObject[]): Promise<void> {
+    await this.oramaInterface.request<void, AnyObject[]>({
+      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
+      body: documents,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public async deleteDocuments(documentIDs: string[]): Promise<void> {
+    await this.oramaInterface.request<void, string[]>({
+      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/delete`,
+      body: documentIDs,
+      method: 'POST',
+      securityLevel: 'write',
+    })
+  }
+
+  public async upsertDocuments(documents: AnyObject[]): Promise<void> {
+    await this.oramaInterface.request<void, AnyObject[]>({
+      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
+      body: documents,
+      method: 'POST',
+      securityLevel: 'write',
+    })
   }
 }
