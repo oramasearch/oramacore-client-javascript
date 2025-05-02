@@ -1,4 +1,4 @@
-import type { AnyObject, EmbeddingsConfig, Language, Nullable } from './lib/types.ts'
+import type { AnyObject, EmbeddingsModel, Language, Maybe, Nullable } from './lib/types.ts'
 import { OramaInterface } from './common.ts'
 import { createRandomString } from './lib/utils.ts'
 
@@ -13,21 +13,41 @@ export type CreateCollectionParams = {
   writeAPIKey?: Nullable<string>
   readAPIKey?: Nullable<string>
   language?: Nullable<Language>
-  embeddings?: Nullable<EmbeddingsConfig>
+  embeddingsModel?: Nullable<EmbeddingsModel>
 }
 
-type NewCollectionResponse = {
+export type NewCollectionResponse = {
   id: string
-  description?: Nullable<string>
+  description?: Maybe<string>
   writeAPIKey: string
   readonlyAPIKey: string
 }
 
-type GetCollectionsResponse = {
+export type CollectionIndexField = {
+  field_id: string
+  field_path: string
+  is_array: boolean
+  field_type: AnyObject
+}
+
+export type CollectionIndex = {
   id: string
-  description: Nullable<string>
   document_count: number
-  fields: AnyObject
+  fields: CollectionIndexField[]
+  automatically_chosen_properties: AnyObject
+}
+
+export type GetCollectionsResponse = {
+  id: string
+  description: Maybe<string>
+  document_count: number
+  indexes: CollectionIndex[]
+}
+
+export type CreateIndexParams = {
+  collectionID: string
+  indexID?: string
+  embeddings?: 'automatic' | 'all_properties' | string[]
 }
 
 export class OramaCoreManager {
@@ -47,12 +67,15 @@ export class OramaCoreManager {
   }
 
   public async createCollection(config: CreateCollectionParams): Promise<NewCollectionResponse> {
-    const body = {
+    const body: AnyObject = {
       id: config.id,
       description: config.description,
       write_api_key: config.writeAPIKey ?? createRandomString(32),
       read_api_key: config.readAPIKey ?? createRandomString(32),
-      embeddings: config.embeddings,
+    }
+
+    if (config.embeddingsModel) {
+      body.embeddings_model = config.embeddingsModel
     }
 
     await this.oramaInterface.request({
@@ -67,7 +90,7 @@ export class OramaCoreManager {
       description: body.description,
       writeAPIKey: body.write_api_key,
       readonlyAPIKey: body.read_api_key,
-    }
+    } as NewCollectionResponse
   }
 
   public listCollections(): Promise<GetCollectionsResponse[]> {

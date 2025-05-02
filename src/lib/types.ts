@@ -69,6 +69,7 @@ export type SearchParams = {
   properties?: string[]
   where?: AnyObject
   facets?: AnyObject
+  indexes?: string[]
 }
 
 export type Hit<T = AnyObject> = {

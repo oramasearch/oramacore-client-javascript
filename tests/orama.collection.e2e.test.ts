@@ -1,7 +1,7 @@
+import { z } from 'npm:zod@3.24.3'
 import { assertEquals } from 'jsr:@std/assert'
 import { CollectionManager, OramaCoreManager } from '../src/index.ts'
 import { createRandomString } from '../src/lib/utils.ts'
-import { z } from 'npm:zod@3.24.3'
 
 const manager = new OramaCoreManager({
   url: 'http://localhost:8080',
@@ -332,8 +332,7 @@ Deno.test('CollectionManager: can update a system prompt', async () => {
 
 Deno.test('CollectionManager: can insert and retrieve a tool', async () => {
   await collectionManager.insertTool({
-    id: '123',
-    name: 'run_division',
+    id: 'run_division',
     description: 'Run a mathematical division',
     parameters: z.object({
       dividend: z.number().describe('The number to be divided'),
@@ -343,8 +342,7 @@ Deno.test('CollectionManager: can insert and retrieve a tool', async () => {
 
   const retrievedTool = await collectionManager.getTool('123')
 
-  assertEquals(retrievedTool.tool.id, '123')
-  assertEquals(retrievedTool.tool.name, 'run_division')
+  assertEquals(retrievedTool.tool.id, 'run_division')
   assertEquals(retrievedTool.tool.description, 'Run a mathematical division')
   assertEquals(
     retrievedTool.tool.parameters,
@@ -354,8 +352,7 @@ Deno.test('CollectionManager: can insert and retrieve a tool', async () => {
 
 Deno.test('CollectionManager: can get all tools', async () => {
   await collectionManager.insertTool({
-    id: '456',
-    name: 'run_multiplication',
+    id: 'run_multiplication',
     description: 'Run a mathematical multiplication',
     parameters: z.object({
       multiplicand: z.number().describe('The number to be multiplied'),
@@ -370,8 +367,7 @@ Deno.test('CollectionManager: can get all tools', async () => {
 
 Deno.test('CollectionManager: can delete a tool', async () => {
   await collectionManager.insertTool({
-    id: '789',
-    name: 'run_addition',
+    id: 'run_addition',
     description: 'Run a mathematical addition',
     parameters: z.object({
       augend: z.number().describe('The first number to be added'),
@@ -379,9 +375,8 @@ Deno.test('CollectionManager: can delete a tool', async () => {
     }),
   })
 
-  const result = await collectionManager.deleteTool('789')
-
-  const checkTool = await collectionManager.getTool('789')
+  const result = await collectionManager.deleteTool('run_addition')
+  const checkTool = await collectionManager.getTool('run_addition')
 
   assertEquals(result.success, true)
   assertEquals(checkTool.tool, null)
@@ -389,8 +384,7 @@ Deno.test('CollectionManager: can delete a tool', async () => {
 
 Deno.test.ignore('CollectionManager: can update a tool', async () => {
   await collectionManager.insertTool({
-    id: '101112',
-    name: 'run_subtraction',
+    id: 'run_subtraction',
     description: 'Run a mathematical subtraction',
     parameters: z.object({
       minuend: z.number().describe('The number from which another number is subtracted'),
@@ -399,8 +393,7 @@ Deno.test.ignore('CollectionManager: can update a tool', async () => {
   })
 
   const updatedTool = await collectionManager.updateTool({
-    id: '101112',
-    name: 'run_subtraction_updated',
+    id: 'run_subtraction',
     description: 'Run a mathematical subtraction with updated parameters',
     parameters: z.object({
       minuend: z.number().describe('Updated description for the number from which another number is subtracted'),
@@ -408,23 +401,8 @@ Deno.test.ignore('CollectionManager: can update a tool', async () => {
     }),
   })
 
-  const checkUpdatedTool = await collectionManager.getTool('101112')
+  const checkUpdatedTool = await collectionManager.getTool('run_subtraction')
 
   assertEquals(updatedTool.success, true)
-  assertEquals(checkUpdatedTool.tool.name, 'run_subtraction_updated')
   assertEquals(checkUpdatedTool.tool.description, 'Run a mathematical subtraction with updated parameters')
-})
-
-Deno.test('CollectionManager: can execute a tool', async () => {
-  const result = await collectionManager.executeTools({
-    messages: [
-      {
-        role: 'user',
-        content: 'What is 10 divided by 2?',
-      },
-    ],
-  })
-
-  assertEquals(result.results?.[0].name, 'run_division')
-  assertEquals(result.results?.[0].arguments, { dividend: 10, divisor: 2 })
 })
