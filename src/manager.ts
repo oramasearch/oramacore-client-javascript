@@ -44,12 +44,6 @@ export type GetCollectionsResponse = {
   indexes: CollectionIndex[]
 }
 
-export type CreateIndexParams = {
-  collectionID: string
-  indexID?: string
-  embeddings?: 'automatic' | 'all_properties' | string[]
-}
-
 export class OramaCoreManager {
   private url: string
   private masterAPIKey: string
