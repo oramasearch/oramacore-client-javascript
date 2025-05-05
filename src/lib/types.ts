@@ -70,6 +70,8 @@ export type SearchParams = {
   where?: AnyObject
   facets?: AnyObject
   indexes?: string[]
+  exact?: boolean
+  threshold?: number
 }
 
 export type Hit<T = AnyObject> = {
@@ -171,6 +173,7 @@ export type Tool = {
   name: string
   description: string
   parameters: string
+  system_prompt?: string
 }
 
 export type InsertToolBody = {
@@ -178,6 +181,7 @@ export type InsertToolBody = {
   description: string
   parameters: string | AnyObject | ZodType
   code?: string
+  system_prompt?: string
 }
 
 export type UpdateToolBody = {
