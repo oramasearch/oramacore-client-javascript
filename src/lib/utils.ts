@@ -1,4 +1,7 @@
-import type { Maybe } from './types.ts'
+import type { ZodType } from 'npm:zod@3.24.3'
+import type { AnyObject, Maybe } from './types.ts'
+
+import { zodToJsonSchema } from 'npm:zod-to-json-schema@3.24.5'
 
 export const LOCAL_STORAGE_USER_ID_KEY = '___orama_anonymous_user_id'
 export const LOCAL_STORAGE_SERVER_SIDE_SESSION_KEY = '___orama_server_side_session'
@@ -111,4 +114,17 @@ export function isServerRuntime() {
 
   // Default to false if it looks like a browser
   return false
+}
+
+export function flattenZodSchema(schema: ZodType): Record<string, any> {
+  const raw = zodToJsonSchema(schema, 'Tool')
+  if ((raw as any).$ref && raw.definitions) {
+    const defName = (raw as any).$ref.replace('#/definitions/', '')
+    const flattened = raw.definitions[defName]
+    if (!flattened) {
+      throw new Error(`Could not resolve definition: ${defName}`)
+    }
+    return flattened
+  }
+  return raw
 }

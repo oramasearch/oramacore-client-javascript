@@ -1,5 +1,4 @@
 import { ZodType } from 'npm:zod@3.24.3'
-import { zodToJsonSchema } from 'npm:zod-to-json-schema@3.24.5'
 
 import type {
   AnyObject,
@@ -30,7 +29,7 @@ import type { Interaction, Message } from './answer-session.ts'
 import { Profile } from './profile.ts'
 import { AnswerSession } from './answer-session.ts'
 import { OramaInterface } from './common.ts'
-import { formatDuration } from './lib/utils.ts'
+import { flattenZodSchema, formatDuration } from './lib/utils.ts'
 
 export type CollectionManagerConfig = {
   url: string
@@ -343,15 +342,19 @@ export class CollectionManager {
     let parameters: string
 
     switch (true) {
-      case typeof tool.parameters === 'string':
+      case typeof tool.parameters === 'string': {
         parameters = tool.parameters
         break
-      case tool.parameters instanceof ZodType:
-        parameters = JSON.stringify(zodToJsonSchema(tool.parameters))
+      }
+      case tool.parameters instanceof ZodType: {
+        const flattenedSchema = flattenZodSchema(tool.parameters)
+        parameters = JSON.stringify(flattenedSchema)
         break
-      case typeof tool.parameters === 'object':
+      }
+      case typeof tool.parameters === 'object': {
         parameters = JSON.stringify(tool.parameters)
         break
+      }
       default:
         throw new Error('Invalid parameters type. Must be string, object or ZodType')
     }
