@@ -34,17 +34,9 @@ export class CloudManager {
   }
 
   async setDataSource(id: string) {
-    const isTransactionOpen = await this.checkTransaction()
-
-    if (isTransactionOpen.transactionId) {
-      this.transactionID = isTransactionOpen.transactionId
-    }
-
-    if (this.transactionID) {
-      throw new Error('Cannot set index while inside a transaction')
-    }
-
     this.datasourceID = id
+
+    this.newTransaction()
   }
 
   async hasOpenTransaction(): Promise<boolean> {
