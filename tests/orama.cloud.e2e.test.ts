@@ -16,6 +16,7 @@ if (!managerURL || !collectionID || !datasourceID || !privateAPIKey) {
       privateAPIKey: privateAPIKey!,
     })
 
+    const datasource = await cloudManager.getDataSource()
     await cloudManager.setDataSource(datasourceID!)
 
     const hasOpenTransaction = await cloudManager.hasOpenTransaction()

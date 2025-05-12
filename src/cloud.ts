@@ -4,7 +4,7 @@ export type CloudManagerConfig = {
   url: string
   collectionID: string
   privateAPIKey: string
-  defaultIndex?: string
+  defaultDataSource?: string
 }
 
 export type GetTransactionResponse = {
@@ -25,18 +25,14 @@ export class CloudManager {
   private privateAPIKey: string
   private datasourceID: Nullable<string>
   private transactionID: Nullable<string> = null
+  private defaultDataSource: Nullable<string> = null
+  private transaction: Nullable<Transaction> = null
 
   constructor(config: CloudManagerConfig) {
     this.url = config.url
     this.collectionID = config.collectionID
     this.privateAPIKey = config.privateAPIKey
-    this.datasourceID = config.defaultIndex ?? null
-  }
-
-  async setDataSource(id: string) {
-    this.datasourceID = id
-
-    this.newTransaction()
+    this.defaultDataSource = config.defaultDataSource ?? null
   }
 
   async hasOpenTransaction(): Promise<boolean> {
@@ -65,21 +61,30 @@ export class CloudManager {
     return this.transactionID
   }
 
-  async newTransaction(): Promise<Transaction> {
-    if (!this.datasourceID) {
-      throw new Error('No datasource ID set. Use setDataSource() to set a datasource ID.')
-    }
+  public async setDataSource(id: string): Promise<void> {
+    this.datasourceID = id
 
     const transaction = new Transaction({
       collectionID: this.collectionID,
       privateAPIKey: this.privateAPIKey,
       url: this.url,
-      datasourceID: this.datasourceID,
+      datasourceID: id,
     })
 
-    await transaction.startTransaction()
+    this.transaction = transaction
+  }
 
-    return transaction
+  public async startTransaction(): Promise<void> {
+    if (!this.transaction) {
+      if (!this.defaultDataSource) {
+        throw new Error('No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.')
+      } else {
+        await this.setDataSource(this.defaultDataSource)
+      }
+      return
+    }
+
+    await this.transaction.startTransaction()
   }
 
   private async checkTransaction(): Promise<GetTransactionResponse> {

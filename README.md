@@ -93,18 +93,16 @@ const cloudManager = new CloudManager({
   privateAPIKey: 'your-private-api-key',
 })
 
-cloudManager.setDataSource('your-datasource-id')
+const datasource = cloudManager.setDataSource('your-datasource-id')
 
-const transaction = await cloudManager.newTransaction()
-
-await transaction.insertDocuments([
+await datasource.insertDocuments([
   { id: '123', title: 'Quick Brown fox' },
   { id: '456', title: 'Jumping over a lazy dog' }
 ])
 
-await transaction.deleteDocuments(['789'])
+await datasource.deleteDocuments(['789'])
 
-await transaction.commit()
+await datasource.commit()
 ```
 
 For the full API reference, please go to
