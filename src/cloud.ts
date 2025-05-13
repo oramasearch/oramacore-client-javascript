@@ -23,7 +23,7 @@ export class CloudManager {
   private url: string
   private collectionID: string
   private privateAPIKey: string
-  private datasourceID: Nullable<string>
+  private datasourceID: Nullable<string> = null
   private transactionID: Nullable<string> = null
   private defaultDataSource: Nullable<string> = null
   private transaction: Nullable<Transaction> = null
@@ -61,7 +61,7 @@ export class CloudManager {
     return this.transactionID
   }
 
-  public async setDataSource(id: string): Promise<void> {
+  public setDataSource(id: string): void {
     this.datasourceID = id
 
     const transaction = new Transaction({
@@ -77,7 +77,9 @@ export class CloudManager {
   public async startTransaction(): Promise<void> {
     if (!this.transaction) {
       if (!this.defaultDataSource) {
-        throw new Error('No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.')
+        throw new Error(
+          'No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.',
+        )
       } else {
         await this.setDataSource(this.defaultDataSource)
       }
@@ -85,6 +87,29 @@ export class CloudManager {
     }
 
     await this.transaction.startTransaction()
+  }
+
+  public insertDocuments(data: object[] | object): Promise<InsertResponse> {
+    return request<InsertResponse>(
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
+      data,
+      this.privateAPIKey,
+      this.url,
+    )
+  }
+
+  // Updates in OramaCore are actually upserts
+  public upsertDocuments(data: object[] | object): Promise<InsertResponse> {
+    return this.insertDocuments(data)
+  }
+
+  public deleteDocuments(documents: string[]): Promise<void> {
+    return request<void>(
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
+      documents,
+      this.privateAPIKey,
+      this.url,
+    )
   }
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
