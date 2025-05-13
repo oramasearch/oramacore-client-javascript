@@ -81,6 +81,7 @@ export type Hit<T = AnyObject> = {
   id: string
   score: number
   document: T
+  datasource_id?: string
 }
 
 export type SearchResult<T = AnyObject> = {
