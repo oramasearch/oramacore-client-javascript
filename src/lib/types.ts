@@ -70,9 +70,12 @@ export type SearchParams = {
   where?: AnyObject
   facets?: AnyObject
   indexes?: string[]
+  datasourceIDs?: string[]
   exact?: boolean
   threshold?: number
 }
+
+export type CloudSearchParams = Omit<SearchParams, 'indexes'> & { datasourceIDs?: string[] }
 
 export type Hit<T = AnyObject> = {
   id: string
