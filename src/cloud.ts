@@ -4,7 +4,7 @@ export type CloudManagerConfig = {
   url: string
   collectionID: string
   privateAPIKey: string
-  defaultIndex?: string
+  defaultDataSource?: string
 }
 
 export type GetTransactionResponse = {
@@ -23,28 +23,16 @@ export class CloudManager {
   private url: string
   private collectionID: string
   private privateAPIKey: string
-  private index: Nullable<string>
+  private datasourceID: Nullable<string> = null
   private transactionID: Nullable<string> = null
+  private defaultDataSource: Nullable<string> = null
+  private transaction: Nullable<Transaction> = null
 
   constructor(config: CloudManagerConfig) {
     this.url = config.url
     this.collectionID = config.collectionID
     this.privateAPIKey = config.privateAPIKey
-    this.index = config.defaultIndex ?? null
-  }
-
-  async setIndex(id: string) {
-    const isTransactionOpen = await this.checkTransaction()
-
-    if (isTransactionOpen.transactionId) {
-      this.transactionID = isTransactionOpen.transactionId
-    }
-
-    if (this.transactionID) {
-      throw new Error('Cannot set index while inside a transaction')
-    }
-
-    this.index = id
+    this.defaultDataSource = config.defaultDataSource ?? null
   }
 
   async hasOpenTransaction(): Promise<boolean> {
@@ -63,7 +51,7 @@ export class CloudManager {
       collectionID: this.collectionID,
       privateAPIKey: this.privateAPIKey,
       url: this.url,
-      index: this.index,
+      datasourceID: this.datasourceID,
     })
   }
 
@@ -73,22 +61,60 @@ export class CloudManager {
     return this.transactionID
   }
 
-  async newTransaction(): Promise<Transaction> {
+  public setDataSource(id: string): void {
+    this.datasourceID = id
+
     const transaction = new Transaction({
       collectionID: this.collectionID,
       privateAPIKey: this.privateAPIKey,
       url: this.url,
-      index: this.index,
+      datasourceID: id,
     })
 
-    await transaction.startTransaction()
+    this.transaction = transaction
+  }
 
-    return transaction
+  public async startTransaction(): Promise<void> {
+    if (!this.transaction) {
+      if (!this.defaultDataSource) {
+        throw new Error(
+          'No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.',
+        )
+      } else {
+        await this.setDataSource(this.defaultDataSource)
+      }
+      return
+    }
+
+    await this.transaction.startTransaction()
+  }
+
+  public insertDocuments(data: object[] | object): Promise<InsertResponse> {
+    return request<InsertResponse>(
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
+      data,
+      this.privateAPIKey,
+      this.url,
+    )
+  }
+
+  // Updates in OramaCore are actually upserts
+  public upsertDocuments(data: object[] | object): Promise<InsertResponse> {
+    return this.insertDocuments(data)
+  }
+
+  public deleteDocuments(documents: string[]): Promise<void> {
+    return request<void>(
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
+      documents,
+      this.privateAPIKey,
+      this.url,
+    )
   }
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
     const response = await request<GetTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/get-open-transaction`,
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/get-open-transaction`,
       {},
       this.privateAPIKey,
       this.url,
@@ -107,7 +133,7 @@ type TransactionConfig = {
   collectionID: string
   privateAPIKey: string
   url: string
-  index: Nullable<string>
+  datasourceID: Nullable<string>
 }
 
 class Transaction {
@@ -115,19 +141,19 @@ class Transaction {
   private collectionID: string
   private privateAPIKey: string
   private url: string
-  private index: Nullable<string>
+  private datasourceID: Nullable<string>
 
   constructor(config: TransactionConfig) {
     this.collectionID = config.collectionID
     this.privateAPIKey = config.privateAPIKey
     this.url = config.url
-    this.index = config.index
+    this.datasourceID = config.datasourceID
   }
 
   async startTransaction(): Promise<Transaction> {
     const response = await request<StartTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/start-transaction`,
-      { index: this.index },
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
+      {},
       this.privateAPIKey,
       this.url,
     )
@@ -234,7 +260,7 @@ class Transaction {
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
     const response = await request<GetTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/get-open-transaction`,
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/get-open-transaction`,
       {},
       this.privateAPIKey,
       this.url,

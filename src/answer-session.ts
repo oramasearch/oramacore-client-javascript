@@ -48,6 +48,7 @@ export type AnswerConfig = {
   sessionID?: string
   messages?: Message[]
   related?: Nullable<RelatedQuestionsConfig>
+  datasourceIDs?: string[]
 }
 
 export type PlanAction = {
