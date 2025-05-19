@@ -494,19 +494,19 @@ export class Index {
     })
   }
 
-  public async insertDocuments(documents: AnyObject[]): Promise<void> {
+  public async insertDocuments(documents: AnyObject | AnyObject[]): Promise<void> {
     await this.oramaInterface.request<void, AnyObject[]>({
       url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
-      body: documents,
+      body: Array.isArray(documents) ? documents : [documents],
       method: 'POST',
       securityLevel: 'write',
     })
   }
 
-  public async deleteDocuments(documentIDs: string[]): Promise<void> {
+  public async deleteDocuments(documentIDs: string | string[]): Promise<void> {
     await this.oramaInterface.request<void, string[]>({
       url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/delete`,
-      body: documentIDs,
+      body: Array.isArray(documentIDs) ? documentIDs : [documentIDs],
       method: 'POST',
       securityLevel: 'write',
     })

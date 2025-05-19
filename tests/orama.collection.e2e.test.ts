@@ -9,6 +9,7 @@ const manager = new OramaCoreManager({
 })
 
 const id = createRandomString(32)
+const indexID = createRandomString(32)
 const readAPIKey = 'read_api_key'
 const writeAPIKey = 'write_api_key'
 
@@ -25,6 +26,12 @@ const collectionManager = new CollectionManager({
   writeAPIKey,
 })
 
+Deno.test('CollectionManager: create an index', async () => {
+  await collectionManager.createIndex({
+    id: indexID,
+  })
+})
+
 Deno.test('CollectionManager: insert multiple documents', async () => {
   const docs = [
     { id: '1', name: 'John Doe', age: 30 },
@@ -32,7 +39,8 @@ Deno.test('CollectionManager: insert multiple documents', async () => {
   ]
 
   try {
-    await collectionManager.insert(docs)
+    const idx = collectionManager.setIndex(indexID)
+    await idx.insertDocuments(docs)
   } catch (error) {
     throw new Error(`Expected no error, but got: ${error}`)
   }
@@ -42,7 +50,8 @@ Deno.test('CollectionManager: insert single document', async () => {
   const doc = { id: '3', name: 'Johnathan Doe', age: 35 }
 
   try {
-    await collectionManager.insert(doc)
+    const idx = collectionManager.setIndex(indexID)
+    await idx.insertDocuments(doc)
   } catch (error) {
     throw new Error(`Expected no error, but got: ${error}`)
   }
@@ -75,7 +84,8 @@ Deno.test('CollectionManager: search documents with "auto" mode', async () => {
 })
 
 Deno.test('CollectionManager: delete documents', async () => {
-  await collectionManager.delete('3')
+  const idx = collectionManager.setIndex(indexID)
+  await idx.deleteDocuments('3')
 
   const result = await collectionManager.search({
     term: 'john',
