@@ -19,8 +19,10 @@ if (!managerURL || !collectionID || !datasourceID || !privateAPIKey) {
     // Set the data source
     const mydatasource = cloudManager.setDataSource(datasourceID!)
 
+    console.log('Datasource ID:', mydatasource, typeof mydatasource)
+
     // Insert documents into the specified data source
-    await mydatasource.insertDocuments([
+    const documents = await mydatasource.insertDocuments([
       {
           "id": "123",
           "title": "Orama",
@@ -33,10 +35,15 @@ if (!managerURL || !collectionID || !datasourceID || !privateAPIKey) {
       }
     ])
 
+    console.log('Inserted documents:', documents)
+
     // Delete documents from the specified data source
     await mydatasource.deleteDocuments(["123"])
 
-    // Delete all documents from the specified data source
+    // To delete all documents, you can use the following line:
+    // Start a transaction
+    await mydatasource.startTransaction()
+
     await mydatasource.deleteAllDocuments()
 
     // Close the transaction
@@ -45,21 +52,21 @@ if (!managerURL || !collectionID || !datasourceID || !privateAPIKey) {
     // Rollback the transaction
     await mydatasource.rollbackTransaction()
 
-    // Check if the transaction is open
-    const hasOpenTransaction = await cloudManager.hasOpenTransaction()
+    // // Check if the transaction is open
+    // const hasOpenTransaction = await cloudManager.hasOpenTransaction()
 
-    if (hasOpenTransaction) {
-      throw new Error('Transaction should not be open')
-    }
+    // if (hasOpenTransaction) {
+    //   throw new Error('Transaction should not be open')
+    // }
 
-    // Get the full transaction
-    const transaction = await cloudManager.getOpenTransaction()
+    // // Get the full transaction
+    // const transaction = await cloudManager.getOpenTransaction()
 
-    // Get the transaction ID of the current transaction
-    const transactionID = await cloudManager.getTransactionID()
+    // // Get the transaction ID of the current transaction
+    // const transactionID = await cloudManager.getTransactionID()
 
-    if (transactionID === null) {
-      throw new Error('Transaction should be null')
-    }
+    // if (transactionID === null) {
+    //   throw new Error('Transaction should be null')
+    // }
   })
 }

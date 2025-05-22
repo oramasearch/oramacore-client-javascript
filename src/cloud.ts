@@ -58,14 +58,6 @@ export class CloudManager {
     }
 
     return null
-
-    // TODO: Check this, probably we don't need to return a new Transaction instance when calling the getOpenTransaction, but just retrun the current one if exists or null
-    // return new Transaction({
-    //   collectionID: this.collectionID,
-    //   privateAPIKey: this.privateAPIKey,
-    //   url: this.url,
-    //   datasourceID: this.datasourceID,
-    // })
   }
 
   async getTransactionID(): Promise<Nullable<string>> {
@@ -73,48 +65,6 @@ export class CloudManager {
 
     return this.transactionID
   }
-
-  // TODO: Do we really need this? Double check if we can remove it or we still need to call the /start-transaction endpoint
-  // public async startTransaction(): Promise<void> {
-  //   if (!this.transaction) {
-  //     if (!this.defaultDataSource) {
-  //       throw new Error(
-  //         'No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.',
-  //       )
-  //     } else {
-  //       this.setDataSource(this.defaultDataSource)
-  //     }
-  //     return
-  //   }
-
-  //   await this.transaction.startTransaction()
-  // }
-
-  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this on CloudManager class, but only on Transaction class
-  // public insertDocuments(data: object[] | object): Promise<InsertResponse> {
-  //   return request<InsertResponse>(
-  //     `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
-  //     data,
-  //     this.privateAPIKey,
-  //     this.url,
-  //   )
-  // }
-
-  // TODO: Double check if we need this, or we can just keep the insertDocuments method
-  // Updates in OramaCore are actually upserts
-  // public upsertDocuments(data: object[] | object): Promise<InsertResponse> {
-  //   return this.insertDocuments(data)
-  // }
-
-  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this on CloudManager class, but only on Transaction class
-  // public deleteDocuments(documents: string[]): Promise<void> {
-  //   return request<void>(
-  //     `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
-  //     documents,
-  //     this.privateAPIKey,
-  //     this.url,
-  //   )
-  // }
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
     const response = await request<GetTransactionResponse>(
@@ -154,18 +104,17 @@ class Transaction {
     this.datasourceID = config.datasourceID
   }
 
-  // TODO: What are the cased we need to call this method? Double check if the users need to start a transaction manually or if we can just call the checkTransaction method to get the current transaction
-  // async startTransaction(): Promise<Transaction> {
-  //   const response = await request<StartTransactionResponse>(
-  //     `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
-  //     {},
-  //     this.privateAPIKey,
-  //     this.url,
-  //   )
+  async startTransaction(): Promise<Transaction> {
+    const response = await request<StartTransactionResponse>(
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
+      {},
+      this.privateAPIKey,
+      this.url,
+    )
 
-  //   this.transactionID = response.transactionID
-  //   return this
-  // }
+    this.transactionID = response.transactionID
+    return this
+  }
 
   // TODO: there is no reference to the datasourceID, does it delete all documents in the collection?
   async deleteAllDocuments(): Promise<Transaction> {
@@ -184,14 +133,13 @@ class Transaction {
   }
 
   async insertDocuments(data: object[] | object): Promise<Transaction> {
-    // TODO: double check if we need to create a new transaction if one doesn't exist
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to insert documents.')
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
     }
 
     const formattedData = Array.isArray(data) ? data : [data]
     await request<void>(
-      `/api/v2/direct/${this.collectionID}/${this.transactionID}/insert`,
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
       formattedData,
       this.privateAPIKey,
       this.url,
@@ -217,13 +165,11 @@ class Transaction {
   // }
 
   async deleteDocuments(documents: string[]): Promise<Transaction> {
-    // TODO: double check if we need to create a new transaction if one doesn't exist
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to delete documents.')
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
     }
-
     await request<void>(
-      `/api/v2/direct/${this.collectionID}/${this.transactionID}/delete`,
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
       documents,
       this.privateAPIKey,
       this.url,
