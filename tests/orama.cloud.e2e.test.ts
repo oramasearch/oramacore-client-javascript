@@ -52,21 +52,21 @@ if (!managerURL || !collectionID || !datasourceID || !privateAPIKey) {
     // Rollback the transaction
     await mydatasource.rollbackTransaction()
 
-    // // Check if the transaction is open
-    // const hasOpenTransaction = await cloudManager.hasOpenTransaction()
+    // Check if there's an open transaction
+    const hasOpenTransaction = await cloudManager.hasOpenTransaction()
 
-    // if (hasOpenTransaction) {
-    //   throw new Error('Transaction should not be open')
-    // }
+    if (hasOpenTransaction) {
+      throw new Error('Transaction should not be open')
+    }
 
-    // // Get the full transaction
-    // const transaction = await cloudManager.getOpenTransaction()
+    // Get the full transaction
+    const transaction = await cloudManager.getOpenTransaction()
 
-    // // Get the transaction ID of the current transaction
-    // const transactionID = await cloudManager.getTransactionID()
+    // Get the transaction ID of the current transaction
+    const transactionID = await cloudManager.getTransactionID()
 
-    // if (transactionID === null) {
-    //   throw new Error('Transaction should be null')
-    // }
+    if (transactionID === null) {
+      throw new Error('Transaction should be null')
+    }
   })
 }

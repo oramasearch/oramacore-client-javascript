@@ -105,6 +105,10 @@ class Transaction {
   }
 
   async startTransaction(): Promise<Transaction> {
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
+    }
+
     const response = await request<StartTransactionResponse>(
       `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
       {},
