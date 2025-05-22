@@ -49,16 +49,17 @@ export class CloudManager {
     return response.transactionId !== null
   }
 
-  async getOpenTransaction(): Promise<Transaction> {
+  async getOpenTransaction(): Promise<Transaction | null> {
     const response = await this.checkTransaction()
 
     if (response.transactionId) {
       this.transactionID = response.transactionId
+      return response as unknown as Transaction
     }
 
-    return response as unknown as Transaction
+    return null
 
-    // TODO: Check this, probably we don't need to return a new Transaction instance
+    // TODO: Check this, probably we don't need to return a new Transaction instance when calling the getOpenTransaction, but just retrun the current one if exists or null
     // return new Transaction({
     //   collectionID: this.collectionID,
     //   privateAPIKey: this.privateAPIKey,
@@ -73,7 +74,7 @@ export class CloudManager {
     return this.transactionID
   }
 
-  // TODO: Do we really need this? Double check if we can remove it
+  // TODO: Do we really need this? Double check if we can remove it or we still need to call the /start-transaction endpoint
   // public async startTransaction(): Promise<void> {
   //   if (!this.transaction) {
   //     if (!this.defaultDataSource) {
@@ -89,7 +90,7 @@ export class CloudManager {
   //   await this.transaction.startTransaction()
   // }
 
-  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this
+  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this on CloudManager class, but only on Transaction class
   // public insertDocuments(data: object[] | object): Promise<InsertResponse> {
   //   return request<InsertResponse>(
   //     `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
@@ -105,7 +106,7 @@ export class CloudManager {
   //   return this.insertDocuments(data)
   // }
 
-  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this
+  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this on CloudManager class, but only on Transaction class
   // public deleteDocuments(documents: string[]): Promise<void> {
   //   return request<void>(
   //     `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
@@ -153,7 +154,7 @@ class Transaction {
     this.datasourceID = config.datasourceID
   }
 
-  // TODO: What are the cased we need to call this method? Double check if we need it
+  // TODO: What are the cased we need to call this method? Double check if the users need to start a transaction manually or if we can just call the checkTransaction method to get the current transaction
   // async startTransaction(): Promise<Transaction> {
   //   const response = await request<StartTransactionResponse>(
   //     `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
@@ -183,6 +184,7 @@ class Transaction {
   }
 
   async insertDocuments(data: object[] | object): Promise<Transaction> {
+    // TODO: double check if we need to create a new transaction if one doesn't exist
     if (!await this.transactionExists()) {
       throw new Error('No open transaction to insert documents.')
     }
@@ -215,6 +217,7 @@ class Transaction {
   // }
 
   async deleteDocuments(documents: string[]): Promise<Transaction> {
+    // TODO: double check if we need to create a new transaction if one doesn't exist
     if (!await this.transactionExists()) {
       throw new Error('No open transaction to delete documents.')
     }
