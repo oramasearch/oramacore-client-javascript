@@ -16,15 +16,46 @@ if (!managerURL || !collectionID || !datasourceID || !privateAPIKey) {
       privateAPIKey: privateAPIKey!,
     })
 
-    const datasource = await cloudManager.getDataSource()
-    await cloudManager.setDataSource(datasourceID!)
+    // Set the data source
+    const mydatasource = cloudManager.setDataSource(datasourceID!)
 
+    // Insert documents into the specified data source
+    await mydatasource.insertDocuments([
+      {
+          "id": "123",
+          "title": "Orama",
+          "description": "Orama is a powerful search engine that enables fast and accurate full-text search capabilities. It's designed to be easy to use while providing advanced features for developers.",
+      },
+      {
+          "id": "456",
+          "title": "Orama Cloud",
+          "description": "Orama provides both cloud and self-hosted solutions, making it flexible for different deployment needs. It supports multiple programming languages and frameworks.",
+      }
+    ])
+
+    // Delete documents from the specified data source
+    await mydatasource.deleteDocuments(["123"])
+
+    // Delete all documents from the specified data source
+    await mydatasource.deleteAllDocuments()
+
+    // Close the transaction
+    await mydatasource.commit()
+
+    // Rollback the transaction
+    await mydatasource.rollbackTransaction()
+
+    // Check if the transaction is open
     const hasOpenTransaction = await cloudManager.hasOpenTransaction()
 
     if (hasOpenTransaction) {
       throw new Error('Transaction should not be open')
     }
 
+    // Get the full transaction
+    const transaction = await cloudManager.getOpenTransaction()
+
+    // Get the transaction ID of the current transaction
     const transactionID = await cloudManager.getTransactionID()
 
     if (transactionID === null) {

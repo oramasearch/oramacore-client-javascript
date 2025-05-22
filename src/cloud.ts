@@ -4,7 +4,6 @@ export type CloudManagerConfig = {
   url: string
   collectionID: string
   privateAPIKey: string
-  defaultDataSource?: string
 }
 
 export type GetTransactionResponse = {
@@ -25,14 +24,24 @@ export class CloudManager {
   private privateAPIKey: string
   private datasourceID: Nullable<string> = null
   private transactionID: Nullable<string> = null
-  private defaultDataSource: Nullable<string> = null
-  private transaction: Nullable<Transaction> = null
 
   constructor(config: CloudManagerConfig) {
     this.url = config.url
     this.collectionID = config.collectionID
     this.privateAPIKey = config.privateAPIKey
-    this.defaultDataSource = config.defaultDataSource ?? null
+  }
+
+  public setDataSource(id: string): Transaction {
+    this.datasourceID = id
+
+    const transaction = new Transaction({
+      collectionID: this.collectionID,
+      privateAPIKey: this.privateAPIKey,
+      url: this.url,
+      datasourceID: id,
+    })
+
+    return transaction
   }
 
   async hasOpenTransaction(): Promise<boolean> {
@@ -47,12 +56,15 @@ export class CloudManager {
       this.transactionID = response.transactionId
     }
 
-    return new Transaction({
-      collectionID: this.collectionID,
-      privateAPIKey: this.privateAPIKey,
-      url: this.url,
-      datasourceID: this.datasourceID,
-    })
+    return response as unknown as Transaction
+
+    // TODO: Check this, probably we don't need to return a new Transaction instance
+    // return new Transaction({
+    //   collectionID: this.collectionID,
+    //   privateAPIKey: this.privateAPIKey,
+    //   url: this.url,
+    //   datasourceID: this.datasourceID,
+    // })
   }
 
   async getTransactionID(): Promise<Nullable<string>> {
@@ -61,56 +73,47 @@ export class CloudManager {
     return this.transactionID
   }
 
-  public setDataSource(id: string): void {
-    this.datasourceID = id
+  // TODO: Do we really need this? Double check if we can remove it
+  // public async startTransaction(): Promise<void> {
+  //   if (!this.transaction) {
+  //     if (!this.defaultDataSource) {
+  //       throw new Error(
+  //         'No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.',
+  //       )
+  //     } else {
+  //       this.setDataSource(this.defaultDataSource)
+  //     }
+  //     return
+  //   }
 
-    const transaction = new Transaction({
-      collectionID: this.collectionID,
-      privateAPIKey: this.privateAPIKey,
-      url: this.url,
-      datasourceID: id,
-    })
+  //   await this.transaction.startTransaction()
+  // }
 
-    this.transaction = transaction
-  }
+  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this
+  // public insertDocuments(data: object[] | object): Promise<InsertResponse> {
+  //   return request<InsertResponse>(
+  //     `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
+  //     data,
+  //     this.privateAPIKey,
+  //     this.url,
+  //   )
+  // }
 
-  public async startTransaction(): Promise<void> {
-    if (!this.transaction) {
-      if (!this.defaultDataSource) {
-        throw new Error(
-          'No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.',
-        )
-      } else {
-        await this.setDataSource(this.defaultDataSource)
-      }
-      return
-    }
-
-    await this.transaction.startTransaction()
-  }
-
-  public insertDocuments(data: object[] | object): Promise<InsertResponse> {
-    return request<InsertResponse>(
-      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
-      data,
-      this.privateAPIKey,
-      this.url,
-    )
-  }
-
+  // TODO: Double check if we need this, or we can just keep the insertDocuments method
   // Updates in OramaCore are actually upserts
-  public upsertDocuments(data: object[] | object): Promise<InsertResponse> {
-    return this.insertDocuments(data)
-  }
+  // public upsertDocuments(data: object[] | object): Promise<InsertResponse> {
+  //   return this.insertDocuments(data)
+  // }
 
-  public deleteDocuments(documents: string[]): Promise<void> {
-    return request<void>(
-      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
-      documents,
-      this.privateAPIKey,
-      this.url,
-    )
-  }
+  // TODO: as we're using the setDataSource method to return a transaction with a specific datasourceID, we might not need this
+  // public deleteDocuments(documents: string[]): Promise<void> {
+  //   return request<void>(
+  //     `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
+  //     documents,
+  //     this.privateAPIKey,
+  //     this.url,
+  //   )
+  // }
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
     const response = await request<GetTransactionResponse>(
@@ -150,18 +153,20 @@ class Transaction {
     this.datasourceID = config.datasourceID
   }
 
-  async startTransaction(): Promise<Transaction> {
-    const response = await request<StartTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
-      {},
-      this.privateAPIKey,
-      this.url,
-    )
+  // TODO: What are the cased we need to call this method? Double check if we need it
+  // async startTransaction(): Promise<Transaction> {
+  //   const response = await request<StartTransactionResponse>(
+  //     `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
+  //     {},
+  //     this.privateAPIKey,
+  //     this.url,
+  //   )
 
-    this.transactionID = response.transactionID
-    return this
-  }
+  //   this.transactionID = response.transactionID
+  //   return this
+  // }
 
+  // TODO: there is no reference to the datasourceID, does it delete all documents in the collection?
   async deleteAllDocuments(): Promise<Transaction> {
     if (!await this.transactionExists()) {
       throw new Error('No open transaction to clean index.')
@@ -184,7 +189,7 @@ class Transaction {
 
     const formattedData = Array.isArray(data) ? data : [data]
     await request<void>(
-      `/api/v2/transaction/${this.transactionID}/insert`,
+      `/api/v2/direct/${this.collectionID}/${this.transactionID}/insert`,
       formattedData,
       this.privateAPIKey,
       this.url,
@@ -193,20 +198,21 @@ class Transaction {
     return this
   }
 
-  async updateDocuments(data: object[] | object): Promise<Transaction> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to update documents.')
-    }
+  // TODO: Double check if we need this, or we can just keep the insertDocuments method
+  // async updateDocuments(data: object[] | object): Promise<Transaction> {
+  //   if (!await this.transactionExists()) {
+  //     throw new Error('No open transaction to update documents.')
+  //   }
 
-    const formattedData = Array.isArray(data) ? data : [data]
-    await request<void>(
-      `/api/v2/transaction/${this.transactionID}/insert`, // "insert" is actually an "upsert" operation in the context of transactions
-      formattedData,
-      this.privateAPIKey,
-      this.url,
-    )
-    return this
-  }
+  //   const formattedData = Array.isArray(data) ? data : [data]
+  //   await request<void>(
+  //     `/api/v2/transaction/${this.transactionID}/insert`, // "insert" is actually an "upsert" operation in the context of transactions
+  //     formattedData,
+  //     this.privateAPIKey,
+  //     this.url,
+  //   )
+  //   return this
+  // }
 
   async deleteDocuments(documents: string[]): Promise<Transaction> {
     if (!await this.transactionExists()) {
@@ -214,7 +220,7 @@ class Transaction {
     }
 
     await request<void>(
-      `/api/v2/transaction/${this.transactionID}/delete`,
+      `/api/v2/direct/${this.collectionID}/${this.transactionID}/delete`,
       documents,
       this.privateAPIKey,
       this.url,
