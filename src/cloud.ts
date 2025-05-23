@@ -104,27 +104,19 @@ class Transaction {
     this.datasourceID = config.datasourceID
   }
 
-  async startTransaction(): Promise<Transaction> {
+  async deleteAllDocuments(): Promise<Transaction> {
+    // Check datasourceID is set
     if (!this.datasourceID) {
       throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
     }
 
-    const response = await request<StartTransactionResponse>(
-      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
-      {},
-      this.privateAPIKey,
-      this.url,
-    )
-
-    this.transactionID = response.transactionID
-    return this
-  }
-
-  // TODO: there is no reference to the datasourceID, does it delete all documents in the collection?
-  async deleteAllDocuments(): Promise<Transaction> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to clean index.')
+    // Check we don't have an open transaction before starting a new one
+    if (await this.transactionExists()) {
+      throw new Error('A transaction is already open. Use rollbackTransaction to rollback the transaction.')
     }
+
+    // Start a new transaction
+    await this.startTransaction()
 
     await request<void>(
       `/api/v2/transaction/${this.transactionID}/clear`,
@@ -132,6 +124,9 @@ class Transaction {
       this.privateAPIKey,
       this.url,
     )
+
+    // Commit the transaction
+    await this.commit()
 
     return this
   }
@@ -182,19 +177,6 @@ class Transaction {
     return this
   }
 
-  async commit(): Promise<void> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to commit.')
-    }
-
-    await request<void>(
-      `/api/v2/transaction/${this.transactionID}/commit`,
-      {},
-      this.privateAPIKey,
-      this.url,
-    )
-  }
-
   async rollbackTransaction(): Promise<void> {
     if (!await this.transactionExists()) {
       throw new Error('No open transaction to rollback.')
@@ -202,6 +184,35 @@ class Transaction {
 
     await request<void>(
       `/api/v2/transaction/${this.transactionID}/rollback`,
+      {},
+      this.privateAPIKey,
+      this.url,
+    )
+  }
+
+  private async startTransaction(): Promise<Transaction> {
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
+    }
+
+    const response = await request<StartTransactionResponse>(
+      `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
+      {},
+      this.privateAPIKey,
+      this.url,
+    )
+
+    this.transactionID = response.transactionID
+    return this
+  }
+
+  private async commit(): Promise<void> {
+    if (!await this.transactionExists()) {
+      throw new Error('No open transaction to commit.')
+    }
+
+    await request<void>(
+      `/api/v2/transaction/${this.transactionID}/commit`,
       {},
       this.privateAPIKey,
       this.url,
