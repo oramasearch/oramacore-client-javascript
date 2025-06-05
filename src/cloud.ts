@@ -4,7 +4,6 @@ export type CloudManagerConfig = {
   url: string
   collectionID: string
   privateAPIKey: string
-  defaultDataSource?: string
 }
 
 export type GetTransactionResponse = {
@@ -25,43 +24,14 @@ export class CloudManager {
   private privateAPIKey: string
   private datasourceID: Nullable<string> = null
   private transactionID: Nullable<string> = null
-  private defaultDataSource: Nullable<string> = null
-  private transaction: Nullable<Transaction> = null
 
   constructor(config: CloudManagerConfig) {
     this.url = config.url
     this.collectionID = config.collectionID
     this.privateAPIKey = config.privateAPIKey
-    this.defaultDataSource = config.defaultDataSource ?? null
   }
 
-  async hasOpenTransaction(): Promise<boolean> {
-    const response = await this.checkTransaction()
-    return response.transactionId !== null
-  }
-
-  async getOpenTransaction(): Promise<Transaction> {
-    const response = await this.checkTransaction()
-
-    if (response.transactionId) {
-      this.transactionID = response.transactionId
-    }
-
-    return new Transaction({
-      collectionID: this.collectionID,
-      privateAPIKey: this.privateAPIKey,
-      url: this.url,
-      datasourceID: this.datasourceID,
-    })
-  }
-
-  async getTransactionID(): Promise<Nullable<string>> {
-    await this.checkTransaction()
-
-    return this.transactionID
-  }
-
-  public setDataSource(id: string): void {
+  public setDataSource(id: string): Transaction {
     this.datasourceID = id
 
     const transaction = new Transaction({
@@ -71,45 +41,29 @@ export class CloudManager {
       datasourceID: id,
     })
 
-    this.transaction = transaction
+    return transaction
   }
 
-  public async startTransaction(): Promise<void> {
-    if (!this.transaction) {
-      if (!this.defaultDataSource) {
-        throw new Error(
-          'No datasource ID set. Use defaultDataSource in the constructor to set a default datasource ID.',
-        )
-      } else {
-        await this.setDataSource(this.defaultDataSource)
-      }
-      return
+  async hasOpenTransaction(): Promise<boolean> {
+    const response = await this.checkTransaction()
+    return response.transactionId !== null
+  }
+
+  async getOpenTransaction(): Promise<Transaction | null> {
+    const response = await this.checkTransaction()
+
+    if (response.transactionId) {
+      this.transactionID = response.transactionId
+      return response as unknown as Transaction
     }
 
-    await this.transaction.startTransaction()
+    return null
   }
 
-  public insertDocuments(data: object[] | object): Promise<InsertResponse> {
-    return request<InsertResponse>(
-      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
-      data,
-      this.privateAPIKey,
-      this.url,
-    )
-  }
+  async getTransactionID(): Promise<Nullable<string>> {
+    await this.checkTransaction()
 
-  // Updates in OramaCore are actually upserts
-  public upsertDocuments(data: object[] | object): Promise<InsertResponse> {
-    return this.insertDocuments(data)
-  }
-
-  public deleteDocuments(documents: string[]): Promise<void> {
-    return request<void>(
-      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
-      documents,
-      this.privateAPIKey,
-      this.url,
-    )
+    return this.transactionID
   }
 
   private async checkTransaction(): Promise<GetTransactionResponse> {
@@ -150,7 +104,97 @@ class Transaction {
     this.datasourceID = config.datasourceID
   }
 
-  async startTransaction(): Promise<Transaction> {
+  async deleteAllDocuments(): Promise<Transaction> {
+    // Check datasourceID is set
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
+    }
+
+    // Check we don't have an open transaction before starting a new one
+    if (await this.transactionExists()) {
+      throw new Error('A transaction is already open. Use rollbackTransaction to rollback the transaction.')
+    }
+
+    // Start a new transaction
+    await this.startTransaction()
+
+    await request<void>(
+      `/api/v2/transaction/${this.transactionID}/clear`,
+      {},
+      this.privateAPIKey,
+      this.url,
+    )
+
+    // Commit the transaction
+    await this.commit()
+
+    return this
+  }
+
+  async insertDocuments(data: object[] | object): Promise<Transaction> {
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
+    }
+
+    const formattedData = Array.isArray(data) ? data : [data]
+    await request<void>(
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/insert`,
+      formattedData,
+      this.privateAPIKey,
+      this.url,
+    )
+
+    return this
+  }
+
+  // TODO: Double check if we need this, or we can just keep the insertDocuments method
+  // async updateDocuments(data: object[] | object): Promise<Transaction> {
+  //   if (!await this.transactionExists()) {
+  //     throw new Error('No open transaction to update documents.')
+  //   }
+
+  //   const formattedData = Array.isArray(data) ? data : [data]
+  //   await request<void>(
+  //     `/api/v2/transaction/${this.transactionID}/insert`, // "insert" is actually an "upsert" operation in the context of transactions
+  //     formattedData,
+  //     this.privateAPIKey,
+  //     this.url,
+  //   )
+  //   return this
+  // }
+
+  async deleteDocuments(documents: string[]): Promise<Transaction> {
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
+    }
+    await request<void>(
+      `/api/v2/direct/${this.collectionID}/${this.datasourceID}/delete`,
+      documents,
+      this.privateAPIKey,
+      this.url,
+    )
+
+    return this
+  }
+
+  async rollbackTransaction(): Promise<void> {
+    if (!await this.transactionExists()) {
+      throw new Error('No open transaction to rollback.')
+    }
+
+    await request<void>(
+      `/api/v2/transaction/${this.transactionID}/rollback`,
+      {},
+      this.privateAPIKey,
+      this.url,
+    )
+  }
+
+  private async startTransaction(): Promise<Transaction> {
+    if (!this.datasourceID) {
+      throw new Error('No datasource ID set. Use setDataSource to set a datasource ID.')
+    }
+
     const response = await request<StartTransactionResponse>(
       `/api/v2/collection/${this.collectionID}/${this.datasourceID}/start-transaction`,
       {},
@@ -162,87 +206,13 @@ class Transaction {
     return this
   }
 
-  async deleteAllDocuments(): Promise<Transaction> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to clean index.')
-    }
-
-    await request<void>(
-      `/api/v2/transaction/${this.transactionID}/clear`,
-      {},
-      this.privateAPIKey,
-      this.url,
-    )
-
-    return this
-  }
-
-  async insertDocuments(data: object[] | object): Promise<Transaction> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to insert documents.')
-    }
-
-    const formattedData = Array.isArray(data) ? data : [data]
-    await request<void>(
-      `/api/v2/transaction/${this.transactionID}/insert`,
-      formattedData,
-      this.privateAPIKey,
-      this.url,
-    )
-
-    return this
-  }
-
-  async updateDocuments(data: object[] | object): Promise<Transaction> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to update documents.')
-    }
-
-    const formattedData = Array.isArray(data) ? data : [data]
-    await request<void>(
-      `/api/v2/transaction/${this.transactionID}/insert`, // "insert" is actually an "upsert" operation in the context of transactions
-      formattedData,
-      this.privateAPIKey,
-      this.url,
-    )
-    return this
-  }
-
-  async deleteDocuments(documents: string[]): Promise<Transaction> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to delete documents.')
-    }
-
-    await request<void>(
-      `/api/v2/transaction/${this.transactionID}/delete`,
-      documents,
-      this.privateAPIKey,
-      this.url,
-    )
-
-    return this
-  }
-
-  async commit(): Promise<void> {
+  private async commit(): Promise<void> {
     if (!await this.transactionExists()) {
       throw new Error('No open transaction to commit.')
     }
 
     await request<void>(
       `/api/v2/transaction/${this.transactionID}/commit`,
-      {},
-      this.privateAPIKey,
-      this.url,
-    )
-  }
-
-  async rollbackTransaction(): Promise<void> {
-    if (!await this.transactionExists()) {
-      throw new Error('No open transaction to rollback.')
-    }
-
-    await request<void>(
-      `/api/v2/transaction/${this.transactionID}/rollback`,
       {},
       this.privateAPIKey,
       this.url,
