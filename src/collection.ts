@@ -137,35 +137,51 @@ export class CollectionManager {
     })
   }
 
-  public async *NLPSearchStream<R = AnyObject>(
-    params: NLPSearchParams,
-  ): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
-    const body = {
-      query: params.query,
-      llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
-    }
+public async *NLPSearchStream<R = AnyObject>(
+  params: NLPSearchParams,
+): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
+  const body = {
+    query: params.query,
+    llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
+  }
 
-    const response = await this.oramaInterface.requestStream<NLPSearchParams>({
-      method: 'POST',
-      securityLevel: 'read-query',
-      url: `/v1/collections/${this.collectionID}/nlp_search_stream`,
-      body: body,
-    })
+  const response = await this.oramaInterface.requestStream<NLPSearchParams>({
+    method: 'POST',
+    securityLevel: 'read-query',
+    url: `/v1/collections/${this.collectionID}/nlp_search_stream`,
+    body: body,
+  })
 
-    for await (const result of response) {
-      try {
-        const streamResult = this.parseStreamResult<R>(result)
-        if (streamResult) {
-          yield streamResult
-        }
-      } catch (parseError) {
-        // Log the error and break the stream
-        console.warn('Failed to parse stream result:', parseError, 'Raw data:', result.data)
-        yield { status: 'PARSE_ERROR' }
+  // Get the reader from the ReadableStream
+  const reader = response.getReader()
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      
+      if (done) {
         break
       }
+
+      if (value) {
+        try {
+          const streamResult = this.parseStreamResult<R>(value)
+          if (streamResult) {
+            yield streamResult
+          }
+        } catch (parseError) {
+          // Log the error and break the stream
+          console.warn('Failed to parse stream result:', parseError, 'Raw data:', value.data)
+          yield { status: 'PARSE_ERROR' }
+          break
+        }
+      }
     }
+  } finally {
+    // Always release the reader when done
+    reader.releaseLock()
   }
+}
 
   private parseStreamResult<R = AnyObject>(result: SSEEvent) {
     if (!result.data) {
