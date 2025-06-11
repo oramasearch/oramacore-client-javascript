@@ -1,5 +1,5 @@
 import 'jsr:@std/dotenv/load'
-import { expect } from "jsr:@std/expect";
+import { expect } from 'jsr:@std/expect'
 import { CloudManager } from '../src/cloud.ts'
 
 const managerURL = Deno.env.get('ORAMA_CLOUD_URL')
@@ -16,7 +16,7 @@ if (!managerURL || !collectionID || !datasourceID || !privateAPIKey) {
       collectionID: collectionID!,
       privateAPIKey: privateAPIKey!,
     })
-    
+
     const datasource = cloudManager.setDataSource(datasourceID!)
 
     expect(datasource).toBeDefined()

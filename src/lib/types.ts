@@ -236,3 +236,51 @@ export type ExecuteToolsResult<T = AnyObject> =
 export type ExecuteToolsParsedResponse<T = AnyObject> = {
   results: Nullable<ExecuteToolsResult<T>[]>
 }
+
+export type NLPSearchResult<T = AnyObject> = {
+  original_query: string
+  generated_query: SearchParams
+  results: {
+    hits: Hit<T>[]
+    count: number
+  }[]
+}
+
+export type NLPSearchStreamStatus =
+  | 'INIT'
+  | 'OPTIMIZING_QUERY'
+  | 'QUERY_OPTIMIZED'
+  | 'SELECTING_PROPS'
+  | 'SELECTED_PROPS'
+  | 'COMBINING_QUERIES_AND_PROPERTIES'
+  | 'COMBINED_QUERIES_AND_PROPERTIES'
+  | 'GENERATING_QUERIES'
+  | 'GENERATED_QUERIES'
+  | 'SEARCHING'
+  | 'SEARCH_RESULTS'
+  | string
+
+export type GeneratedQuery = {
+  index: number
+  original_query: string
+  generated_query: {
+    term: string
+    mode: string
+    properties: string[]
+  }
+}
+
+export type SelectedProperties = Record<string, {
+  selected_properties: Array<any>
+}>
+
+export type CombinedQueryAndProperties = {
+  query: string
+  properties: SelectedProperties
+  filter_properties: Record<string, any>
+}
+
+export type NLPSearchStreamResult<R = AnyObject> = {
+  status: NLPSearchStreamStatus
+  data?: R | R[] | GeneratedQuery[] | SelectedProperties[] | CombinedQueryAndProperties[]
+}
