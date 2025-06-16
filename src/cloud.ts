@@ -11,7 +11,7 @@ export type GetTransactionResponse = {
 }
 
 export type StartTransactionResponse = {
-  transactionID: string
+  transactionId: string
 }
 
 export type InsertResponse = {
@@ -19,9 +19,9 @@ export type InsertResponse = {
 }
 
 export class CloudManager {
-  private url: string
-  private collectionID: string
-  private privateAPIKey: string
+  private readonly url: string
+  private readonly collectionID: string
+  private readonly privateAPIKey: string
   private datasourceID: Nullable<string> = null
   private transactionID: Nullable<string> = null
 
@@ -152,7 +152,6 @@ class Transaction {
   //   if (!await this.transactionExists()) {
   //     throw new Error('No open transaction to update documents.')
   //   }
-
   //   const formattedData = Array.isArray(data) ? data : [data]
   //   await request<void>(
   //     `/api/v2/transaction/${this.transactionID}/insert`, // "insert" is actually an "upsert" operation in the context of transactions
@@ -202,7 +201,7 @@ class Transaction {
       this.url,
     )
 
-    this.transactionID = response.transactionID
+    this.transactionID = response.transactionId
     return this
   }
 
@@ -273,10 +272,21 @@ async function request<R = unknown>(path: string, body = {}, apiKey: string, url
     throw new Error(`Request failed with status ${resp.status}. ${errorText}`)
   }
 
-  const respBody = await resp.json()
+  const respText = await resp.text();
 
-  if (respBody.error) {
-    throw new Error(`Request failed: ${respBody.error}`)
+  if (!respText) {
+    return null as R;
+  }
+
+  let respBody: any;
+  try {
+    respBody = JSON.parse(respText);
+  } catch (error) {
+    throw new Error(`Invalid JSON Error: ${error}`);
+  }
+
+  if (respBody?.error) {
+    throw new Error(`Request failed: ${respBody.error}`);
   }
 
   return respBody as R

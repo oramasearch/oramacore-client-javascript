@@ -5,7 +5,7 @@
   "nodeModulesDir": "auto",
   "tasks": {
     "build": "deno run -A ./dnt.ts",
-    "test": "deno test tests --allow-env --allow-read"
+    "test": "deno test tests --allow-env --allow-read --allow-net"
   },
   "fmt": {
     "lineWidth": 120,
