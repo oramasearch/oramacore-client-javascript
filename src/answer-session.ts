@@ -48,7 +48,10 @@ export type AnswerConfig = {
   sessionID?: string
   messages?: Message[]
   related?: Nullable<RelatedQuestionsConfig>
-  datasourceIDs?: string[]
+  datasourceIDs?: string[],
+  min_similarity?: number,
+  max_documents?: number,
+  ragat_notation?: string,
 }
 
 export type PlanAction = {
@@ -180,6 +183,9 @@ export class AnswerSession {
       messages: data.messages || [],
       llm_config: null as Nullable<CreateAnswerSessionConfig['LLMConfig']>,
       related: data.related,
+      min_similarity: data.min_similarity,
+      max_documents: data.max_documents,
+      ragat_notation: data.ragat_notation,
     }
 
     if (this.LLMConfig) {
@@ -371,6 +377,9 @@ export class AnswerSession {
         messages: data.messages || [],
         llm_config: this.LLMConfig ? this.LLMConfig : null,
         related: data.related,
+        min_similarity: data.min_similarity,
+        max_documents: data.max_documents,
+        ragat_notation: data.ragat_notation,
       },
       signal: this.abortController?.signal,
     })
