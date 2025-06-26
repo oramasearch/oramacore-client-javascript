@@ -95,6 +95,7 @@ export class CollectionManager {
       baseURL: this.url,
       writeAPIKey: this.writeAPIKey,
       readAPIKey: this.readAPIKey,
+      collectionID: this.collectionID
     })
 
     this.profile = new Profile({
@@ -158,7 +159,7 @@ public async *NLPSearchStream<R = AnyObject>(
   try {
     while (true) {
       const { done, value } = await reader.read()
-      
+
       if (done) {
         break
       }
@@ -644,6 +645,7 @@ export class Index {
       baseURL: url,
       writeAPIKey: writeAPIKey,
       readAPIKey: readAPIKey,
+      collectionID: collectionID,
     })
   }
 
