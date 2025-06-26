@@ -159,6 +159,7 @@ public async *NLPSearchStream<R = AnyObject>(
   try {
     while (true) {
       const { done, value } = await reader.read()
+
       if (done) {
         break
       }
