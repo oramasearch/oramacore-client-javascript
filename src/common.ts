@@ -175,9 +175,8 @@ export class OramaInterface {
         "Content-Type": "application/json",
       };
       const payload = {
-        scope: "write",
         collectionId: this.collectionID,
-        privateKey: this.getAPIKey(config.securityLevel),
+        privateApiKey: this.getAPIKey(config.securityLevel),
       };
       const request = await fetch(issuer, {
         method: "POST",
