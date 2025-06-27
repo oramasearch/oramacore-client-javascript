@@ -1,205 +1,217 @@
 import { EventsStreamTransformer, type SSEEvent } from './lib/event-stream.ts'
-import type { AnyObject } from './lib/types.ts'
-import dedent from 'npm:dedent@1.5.3'
-
-type OramaInterfaceConfig = {
-  baseURL: string
-  masterAPIKey?: string
-  writeAPIKey?: string
-  readAPIKey?: string
-  collectionID?: string
-  authJwtUrl?: string
-}
 
 type JWTRequestResponse = {
   jwt: string;
-  cluster_url: string;
+  writerURL: string;
+  readerApiKey: string;
+  readerURL: string;
+  expiresIn: number; // not used for now
 };
 
-type SecurityLevel = 'master' | 'write' | 'read' | 'read-query'
+export type ApiKeyPosition = 'header' | 'query-params'
+export type ClientRequestInit = Omit<RequestInit, 'method' | 'headers' | 'body'>;
+type AuthConfig = {
+  readerURL?: string,
+  writerURL?: string,
+} & ({
+  type: 'apiKey',
+  apiKey: string,
+} | {
+  type: 'jwt',
+  authJwtURL: string,
+  collectionID: string,
+  privateApiKey: string,
+})
 
-type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
+export class Auth {
+  private config: AuthConfig
 
-type RequestConfig<Body = AnyObject> = {
-  url: string
-  method: Method
-  securityLevel: SecurityLevel
-  body?: Body
-  signal?: AbortSignal
+  constructor(config: AuthConfig) {
+    this.config = config
+  }
+
+  public async getRef(
+    target: ClientRequest['target'],
+    init?: ClientRequestInit,
+  ): Promise<{
+    bearer: string,
+    baseURL: string,
+  }> {
+    let bearer: string;
+    let baseURL: string;
+    switch (this.config.type) {
+      case 'apiKey': {
+        bearer = this.config.apiKey
+        if (target == 'writer' && !this.config.writerURL) {
+          throw new Error('Cannot perform a request to a writer without the writerURL. Use `cluster.writerURL` to configure it')
+        }
+        if (target == 'reader' && !this.config.readerURL) {
+          throw new Error('Cannot perform a request to a writer without the writerURL. Use `cluster.readerURL` to configure it')
+        }
+        baseURL = target == 'writer' ? this.config.writerURL! : this.config.readerURL!
+        break
+      }
+      case 'jwt': {
+        const ret = await getJwtToken(
+          this.config.authJwtURL,
+          this.config.collectionID,
+          this.config.privateApiKey,
+          init
+        )
+        // NB: This allow us to support at *client side* a way invocation to reader with private api key!!
+        if (target == 'reader') {
+          baseURL = ret.readerURL
+          bearer = ret.readerApiKey
+        } else {
+          bearer = ret.jwt
+          baseURL = ret.writerURL
+        }
+        break
+      }
+    }
+
+    return {
+      bearer,
+      baseURL,
+    }
+  }
 }
 
-export class OramaInterface {
-  private baseURL: string
-  private masterAPIKey?: string
-  private writeAPIKey?: string
-  private readAPIKey?: string
-  private collectionID?: string;
-  private jwtToken?: string;
-  private authJwtUrl?: string;
+export type ClientRequest = {
+  target: 'reader' | 'writer'
+  method: 'GET' | 'POST',
+  path: string,
+  body?: object,
+  params?: Record<string, string>,
+  init?: ClientRequestInit,
+  apiKeyPosition: ApiKeyPosition,
+}
 
-  constructor(config: OramaInterfaceConfig) {
-    this.baseURL = config.baseURL
-    this.masterAPIKey = config.masterAPIKey
-    this.writeAPIKey = config.writeAPIKey
-    this.readAPIKey = config.readAPIKey
-    this.collectionID = config.collectionID
-    this.authJwtUrl = config.authJwtUrl
+export interface ClientConfig {
+  auth: Auth,
+}
+
+export class Client {
+  private config: ClientConfig
+
+  constructor(config: ClientConfig) {
+    this.config = config
   }
 
-  public async request<T = unknown, B = AnyObject>(
-      config: RequestConfig<B>,
-      jwtAuthAttemps = 0): Promise<T> {
-    const remoteURL = new URL(config.url, this.baseURL)
-    const headers = new Headers()
-
-    headers.append('Content-Type', 'application/json')
-
-    const requestObject: Partial<RequestInit> = {
-      method: config.method,
-      headers,
-      signal: config.signal,
-    }
-
-    if (config.body && config.method !== 'GET') {
-      requestObject.body = JSON.stringify(config.body)
-    }
-
-    if (config.body && config.method === 'GET') {
-      remoteURL.search = new URLSearchParams(config.body).toString()
-    }
-
-    const APIKey = this.getAPIKey(config.securityLevel)
-
-    switch (true) {
-      case config.method === 'POST' && config.securityLevel === "write":
-        if(jwtAuthAttemps > 2) {
-          throw new Error(
-            dedent(`
-                    Failed to authenticate with JWT token for ${config.url}.
-                    Max attempts exceeded: ${jwtAuthAttemps}.
-                `),
-          );
-        }
-
-        if (!this.jwtToken) {
-          this.jwtToken = await this.getJwtToken(config);
-        }
-
-        headers.append("Authorization", `Bearer ${this.jwtToken}`);
-        break;
-      case config.method !== 'GET' && config.securityLevel !== 'read-query':
-        headers.append('Authorization', `Bearer ${APIKey}`)
-        break
-      case config.method === 'GET' && config.securityLevel === 'master':
-        headers.append('Authorization', `Bearer ${APIKey}`)
-        break
-      case config.method === 'GET' || config.securityLevel === 'read-query':
-        remoteURL.searchParams.append('api-key', APIKey)
-        break
-    }
-
-    const request = await fetch(remoteURL.toString(), requestObject)
-
-    if (!request.ok) {
-      if (request.status === 401) {
-        this.jwtToken = await this.getJwtToken(config)
-        headers.append("Authorization", this.jwtToken)
-        return await this.request(config, jwtAuthAttemps + 1);
-      }
-
-      throw new Error(
-        dedent(`
-                Request to "${config.url}" failed with status ${request.status}:
-                ${await request.text()}
-            `),
-      )
-    }
-
-    return request.json() as Promise<T>
-  }
-
-  public async requestStream<B = AnyObject>(
-    config: RequestConfig<B>,
-  ): Promise<ReadableStream<SSEEvent>> {
-    const remoteURL = new URL(config.url, this.baseURL)
-    const headers = new Headers()
-    headers.append('Content-Type', 'application/json')
-
-    const APIKey = this.getAPIKey(config.securityLevel)
-    remoteURL.searchParams.append('api-key', APIKey)
-
-    const response = await fetch(remoteURL.toString(), {
-      body: JSON.stringify(config.body),
-      headers,
-      method: config.method,
-    })
+  public async request<Output>(req: ClientRequest): Promise<Output> {
+    const response = await this.getResponse(req)
 
     if (!response.ok) {
+      let text
+      try {
+        text = await response.text()
+      } catch (e) {
+        text = `Unable to got response body ${e}`
+      }
       throw new Error(
-        dedent(`
-                Request to "${config.url}" failed with status ${response.status}:
-                ${await response.text()}
-            `),
+        `Request to "${req.path}?${new URLSearchParams(req.params ?? {}).toString()}" failed with status ${response.status}: ${text}`,
       )
     }
 
+    return response.json() as Promise<Output>
+  }
+
+  public async requestStream(req: ClientRequest): Promise<ReadableStream<SSEEvent>> {
+    const response = await this.getResponse(req)
+
     if (response.body === null) {
-      throw new Error(`Response body is null for "${config.url}"`)
+      throw new Error(`Response body is null for "${req.path}"`)
     }
 
     return response.body?.pipeThrough(new EventsStreamTransformer())
   }
 
-  private getAPIKey(securityLevel: SecurityLevel): string {
-    switch (securityLevel) {
-      case 'master':
-        if (!this.masterAPIKey) {
-          throw new Error('Master API key is required for this operation')
-        }
-        return this.masterAPIKey
-      case 'write':
-        if (!this.writeAPIKey) {
-          throw new Error('Write API key is required for this operation')
-        }
-        return this.writeAPIKey
-      case 'read':
-      case 'read-query':
-        if (!this.readAPIKey) {
-          throw new Error('Read API key is required for this operation')
-        }
-        return this.readAPIKey
+  private async getResponse({
+    method,
+    path,
+    body,
+    params,
+    apiKeyPosition,
+    init,
+    target,
+  }: ClientRequest): Promise<Response> {
+    const {
+      baseURL,
+      bearer,
+    } = await this.config.auth.getRef(target, init)
+
+    console.log({
+      baseURL, bearer,
+    })
+
+    const remoteURL = new URL(path, baseURL)
+    const headers = new Headers()
+    headers.append('Content-Type', 'application/json')
+
+    if (apiKeyPosition === 'header') {
+      headers.append('Authorization', `Bearer ${bearer}`)
     }
+    if (apiKeyPosition === 'query-params') {
+      params = params ?? {}
+      params['api-key'] = bearer
+    }
+
+    const requestObject: Partial<RequestInit> = {
+      method: method,
+      headers,
+      ...init,
+    }
+
+    if (body && method === 'POST') {
+      requestObject.body = JSON.stringify(body)
+    }
+
+    if (params) {
+      remoteURL.search = new URLSearchParams(params).toString()
+    }
+
+    const response = await fetch(remoteURL, requestObject)
+    if (response.status === 401) {
+
+
+      console.log(remoteURL, requestObject)
+
+      throw new Error(
+        `Unauthorized: are you using the correct Api Key?`,
+      )
+    }
+    return response
+  }
+}
+
+async function getJwtToken(
+  authJwtUrl: string,
+  collectionId: string,
+  privateApiKey: string,
+  init?: ClientRequestInit,
+): Promise<JWTRequestResponse> {
+  const payload = {
+    collectionId,
+    privateApiKey,
+  };
+  const request = await fetch(authJwtUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    ...init,
+  });
+
+  if (!request.ok) {
+    throw new Error(`JWT request to ${request.url} failed with status ${request.status}: ${await request.text()}`);
   }
 
-  private async getJwtToken<T = unknown, B = AnyObject>(
-      config: RequestConfig<B>,
-    ): Promise<string> {
-      const issuer = this.authJwtUrl || "https://cloud.orama.com/api/user/jwt";
-      const headers = {
-        "Content-Type": "application/json",
-      };
-      const payload = {
-        collectionId: this.collectionID,
-        privateApiKey: this.getAPIKey(config.securityLevel),
-      };
-      const request = await fetch(issuer, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
+  const a = await (request.json() as Promise<JWTRequestResponse>)
 
-      if (!request.ok) {
-        throw new Error(
-          dedent(`
-                  JWT request to ${request.url} failed with status ${request.status}:
-                  ${await request.text()}
-              `),
-        );
-      }
+  console.log(a, new Error('aaaaaa'))
 
-      const response = (await request.json()) as JWTRequestResponse;
-      return response.jwt;
-    }
+  return a
 }
 
 export function safeJSONParse<T = unknown>(data: string, silent = true): T {

@@ -1,5 +1,5 @@
 import type { ZodType } from 'npm:zod@3.24.3'
-import type { AnyObject, Maybe } from './types.ts'
+import type { Maybe } from './types.ts'
 
 import { zodToJsonSchema } from 'npm:zod-to-json-schema@3.24.5'
 

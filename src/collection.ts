@@ -33,16 +33,8 @@ import type { Interaction, Message } from './answer-session.ts'
 
 import { Profile } from './profile.ts'
 import { AnswerSession } from './answer-session.ts'
-import { OramaInterface } from './common.ts'
+import { Auth, Client, type ClientConfig, type ClientRequestInit } from './common.ts'
 import { flattenZodSchema, formatDuration } from './lib/utils.ts'
-
-export type CollectionManagerConfig = {
-  url: string
-  collectionID: string
-  writeAPIKey?: string
-  readAPIKey?: string
-  authJwtUrl?: string
-}
 
 type AddHookConfig = {
   name: Hook
@@ -79,45 +71,77 @@ export type CreateIndexParams = {
   embeddings?: 'automatic' | 'all_properties' | string[]
 }
 
+const DEFAULT_READER_URL = 'https://collections.orama.com'
+const DEAFULT_JWT_URL = 'https://app.orama.com/api/user/jwt'
+
+export interface CollectionManagerConfig {
+  cluster?: {
+    writerURL?: string,
+    readURL?: string,
+  },
+  collectionID: string,
+  apiKey: string,
+  authJwtURL?: string,
+}
+
 export class CollectionManager {
-  private url: string
+  // private url: string
   private collectionID: string
-  private writeAPIKey?: string
-  private readAPIKey?: string
-  private oramaInterface: OramaInterface
-  private profile: Profile
+  private apiKey: string
+  // private writeAPIKey?: string
+  // private readAPIKey?: string
+  private client: Client
+  private profile?: Profile
 
   constructor(config: CollectionManagerConfig) {
-    this.url = config.url
-    this.writeAPIKey = config.writeAPIKey
-    this.readAPIKey = config.readAPIKey
-    this.collectionID = config.collectionID
-    this.oramaInterface = new OramaInterface({
-      baseURL: this.url,
-      writeAPIKey: this.writeAPIKey,
-      readAPIKey: this.readAPIKey,
-      collectionID: this.collectionID,
-      authJwtUrl: config.authJwtUrl,
-    })
+    let auth: Auth
 
-    this.profile = new Profile({
-      endpoint: this.url,
-      apiKey: this.readAPIKey!,
-    })
+    if (config.apiKey.startsWith('p_')) {
+      // OramaCore Cloud Private Api Key (JWT flow)
+      auth = new Auth({
+        type: 'jwt',
+        authJwtURL: config.authJwtURL ?? DEAFULT_JWT_URL,
+        collectionID: config.collectionID,
+        privateApiKey: config.apiKey,
+        readerURL: config.cluster?.readURL ?? DEFAULT_READER_URL,
+        writerURL: config.cluster?.writerURL,
+      })
+    } else {
+      auth = new Auth({
+        type: 'apiKey',
+        readerURL: config.cluster?.readURL ?? DEFAULT_READER_URL,
+        writerURL: config.cluster?.writerURL,
+        apiKey: config.apiKey,
+      })
+      this.profile = new Profile({
+        endpoint: config.cluster?.readURL ?? DEFAULT_READER_URL,
+        apiKey: config.apiKey,
+      })
+    }
+    const commonConfig: ClientConfig = {
+      auth,
+    }
+
+    this.collectionID = config.collectionID
+    this.client = new Client(commonConfig)
+    this.apiKey = config.apiKey
   }
 
-  public async search<R = AnyObject>(query: SearchParams): Promise<SearchResult<R>> {
+  public async search<R = AnyObject>(query: SearchParams, init?: ClientRequestInit): Promise<SearchResult<R>> {
     const start = +new Date()
     const { datasourceIDs, indexes, ...restQuery } = query
 
-    const result = await this.oramaInterface.request<Omit<SearchResult<R>, 'elapsed'>>({
-      url: `/v1/collections/${this.collectionID}/search`,
+    const result = await this.client.request<Omit<SearchResult<R>, 'elapsed'>>({
+      path: `/v1/collections/${this.collectionID}/search`,
       body: {
         ...restQuery,
         indexes: datasourceIDs || indexes,
       },
       method: 'POST',
-      securityLevel: 'read-query',
+      params: undefined,
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
 
     const elapsed = +new Date() - start
@@ -131,28 +155,33 @@ export class CollectionManager {
     }
   }
 
-  public NLPSearch<R = AnyObject>(params: NLPSearchParams): Promise<NLPSearchResult<R>[]> {
-    return this.oramaInterface.request({
+  public NLPSearch<R = AnyObject>(params: NLPSearchParams, init?: ClientRequestInit): Promise<NLPSearchResult<R>[]> {
+    return this.client.request({
       method: 'POST',
-      securityLevel: 'read-query',
-      url: `/v1/collections/${this.collectionID}/nlp_search`,
+      path: `/v1/collections/${this.collectionID}/nlp_search`,
       body: params,
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
 public async *NLPSearchStream<R = AnyObject>(
   params: NLPSearchParams,
+  init?: ClientRequestInit
 ): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
   const body = {
     query: params.query,
     llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
   }
 
-  const response = await this.oramaInterface.requestStream<NLPSearchParams>({
+  const response = await this.client.requestStream({
     method: 'POST',
-    securityLevel: 'read-query',
-    url: `/v1/collections/${this.collectionID}/nlp_search_stream`,
+    path: `/v1/collections/${this.collectionID}/nlp_search_stream`,
     body: body,
+    init,
+    apiKeyPosition: 'query-params',
+    target: 'reader',
   })
 
   // Get the reader from the ReadableStream
@@ -278,78 +307,89 @@ public async *NLPSearchStream<R = AnyObject>(
     })
   }
 
-  public getStats(collectionID: string): Promise<AnyObject> {
-    return this.oramaInterface.request<AnyObject>({
-      url: `/v1/collections/${collectionID}/stats`,
+  public getStats(collectionID: string, init?: ClientRequestInit): Promise<AnyObject> {
+    return this.client.request<AnyObject>({
+      path: `/v1/collections/${collectionID}/stats`,
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public async createIndex(config: CreateIndexParams): Promise<void> {
+  public async createIndex(config: CreateIndexParams, init?: ClientRequestInit): Promise<void> {
     const body: AnyObject = {
       id: config.id,
       embedding: config.embeddings,
     }
 
-    await this.oramaInterface.request<void>({
-      url: `/v1/collections/${this.collectionID}/indexes/create`,
+    console.log('this.client', JSON.stringify(this.client, null, 2))
+
+    await this.client.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/create`,
       body,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public async deleteIndex(indexID: string): Promise<void> {
-    await this.oramaInterface.request<void>({
-      url: `/v1/collections/${this.collectionID}/indexes/delete`,
+  public async deleteIndex(indexID: string, init?: ClientRequestInit): Promise<void> {
+    await this.client.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/delete`,
       body: { index_id_to_delete: indexID },
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
   public setIndex(id: string): Index {
     return new Index(
-      this.oramaInterface,
+      this.client,
       this.collectionID,
       id,
     )
   }
 
-  public getAllDocsInCollection(id: string): Promise<AnyObject[]> {
-    return this.oramaInterface.request<AnyObject[]>({
-      url: `/v1/collections/list`,
+  public getAllDocsInCollection(id: string, init?: ClientRequestInit): Promise<AnyObject[]> {
+    return this.client.request<AnyObject[]>({
+      path: `/v1/collections/list`,
       method: 'POST',
       body: { id },
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
   public createAnswerSession(config?: CreateAnswerSessionConfig): AnswerSession {
-    if (!this.readAPIKey) {
+    if (!this.apiKey) {
       throw new Error('Read API key is required to create an answer session')
     }
 
     return new AnswerSession({
-      url: this.url,
-      readAPIKey: this.readAPIKey || '',
       collectionID: this.collectionID,
+      common: this.client,
       ...config,
     })
   }
 
-  public async insertHook(config: AddHookConfig): Promise<NewHookresponse> {
+  public async insertHook(config: AddHookConfig, init?: ClientRequestInit): Promise<NewHookresponse> {
     const body = {
       name: config.name,
       code: config.code,
     }
 
-    await this.oramaInterface.request({
-      url: `/v1/collections/${config.collectionID}/hooks/create`,
+    await this.client.request({
+      path: `/v1/collections/${config.collectionID}/hooks/create`,
       body,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
 
     return {
@@ -359,154 +399,187 @@ public async *NLPSearchStream<R = AnyObject>(
     }
   }
 
-  public insertSegment(segment: InsertSegmentBody): Promise<InsertSegmentResponse> {
-    return this.oramaInterface.request<InsertSegmentResponse>({
-      url: `/v1/collections/${this.collectionID}/segments/insert`,
+  public insertSegment(segment: InsertSegmentBody, init?: ClientRequestInit): Promise<InsertSegmentResponse> {
+    return this.client.request<InsertSegmentResponse>({
+      path: `/v1/collections/${this.collectionID}/segments/insert`,
       body: segment,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public getSegment(id: string): Promise<{ segment: Segment }> {
-    return this.oramaInterface.request<{ segment: Segment }>({
-      url: `/v1/collections/${this.collectionID}/segments/get`,
-      body: { segment_id: id },
+  public getSegment(id: string, init?: ClientRequestInit): Promise<{ segment: Segment }> {
+    return this.client.request<{ segment: Segment }>({
+      path: `/v1/collections/${this.collectionID}/segments/get`,
+      params: { segment_id: id },
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public getAllSegments(): Promise<{ segments: Segment[] }> {
-    return this.oramaInterface.request<{ segments: Segment[] }>({
-      url: `/v1/collections/${this.collectionID}/segments/all`,
+  public getAllSegments(init?: ClientRequestInit): Promise<{ segments: Segment[] }> {
+    return this.client.request<{ segments: Segment[] }>({
+      path: `/v1/collections/${this.collectionID}/segments/all`,
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public deleteSegment(id: string): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
-      url: `/v1/collections/${this.collectionID}/segments/delete`,
+  public deleteSegment(id: string, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>({
+      path: `/v1/collections/${this.collectionID}/segments/delete`,
       body: { id },
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public updateSegment(segment: Segment): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
-      url: `/v1/collections/${this.collectionID}/segments/update`,
+  public updateSegment(segment: Segment, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>({
+      path: `/v1/collections/${this.collectionID}/segments/update`,
       body: segment,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public insertTrigger(trigger: InsertTriggerBody): Promise<InsertTriggerResponse> {
+  public insertTrigger(trigger: InsertTriggerBody, init?: ClientRequestInit): Promise<InsertTriggerResponse> {
     if (!trigger.segment_id) {
       throw new Error('You cannot insert a trigger without a segment_id')
     }
 
-    return this.oramaInterface.request<InsertTriggerResponse>({
-      url: `/v1/collections/${this.collectionID}/triggers/insert`,
+    return this.client.request<InsertTriggerResponse>({
+      path: `/v1/collections/${this.collectionID}/triggers/insert`,
       body: trigger,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public getTrigger(id: string): Promise<{ trigger: Trigger }> {
-    return this.oramaInterface.request<{ trigger: Trigger }>({
-      url: `/v1/collections/${this.collectionID}/triggers/get`,
-      body: { trigger_id: id },
+  public getTrigger(id: string, init?: ClientRequestInit): Promise<{ trigger: Trigger }> {
+    return this.client.request<{ trigger: Trigger }>({
+      path: `/v1/collections/${this.collectionID}/triggers/get`,
+      params: { trigger_id: id },
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public getAllTriggers(): Promise<{ triggers: Trigger[] }> {
-    return this.oramaInterface.request<{ triggers: Trigger[] }>({
-      url: `/v1/collections/${this.collectionID}/triggers/all`,
+  public getAllTriggers(init?: ClientRequestInit): Promise<{ triggers: Trigger[] }> {
+    return this.client.request<{ triggers: Trigger[] }>({
+      path: `/v1/collections/${this.collectionID}/triggers/all`,
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public deleteTrigger(id: string): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
-      url: `/v1/collections/${this.collectionID}/triggers/delete`,
+  public deleteTrigger(id: string, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>({
+      path: `/v1/collections/${this.collectionID}/triggers/delete`,
       body: { id },
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public updateTrigger(trigger: Trigger): Promise<UpdateTriggerResponse> {
-    return this.oramaInterface.request<UpdateTriggerResponse>({
-      url: `/v1/collections/${this.collectionID}/triggers/update`,
+  public updateTrigger(trigger: Trigger, init?: ClientRequestInit): Promise<UpdateTriggerResponse> {
+    return this.client.request<UpdateTriggerResponse>({
+      path: `/v1/collections/${this.collectionID}/triggers/update`,
       body: trigger,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public insertSystemPrompt(systemPrompt: InsertSystemPromptBody): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<UpdateTriggerResponse>({
-      url: `/v1/collections/${this.collectionID}/system_prompts/insert`,
+  public insertSystemPrompt(systemPrompt: InsertSystemPromptBody, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<UpdateTriggerResponse>({
+      path: `/v1/collections/${this.collectionID}/system_prompts/insert`,
       body: systemPrompt,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public getSystemPrompt(id: string): Promise<{ system_prompt: SystemPrompt }> {
-    return this.oramaInterface.request<{ system_prompt: SystemPrompt }>({
-      url: `/v1/collections/${this.collectionID}/system_prompts/get`,
-      body: { system_prompt_id: id },
+  public getSystemPrompt(id: string, init?: ClientRequestInit): Promise<{ system_prompt: SystemPrompt }> {
+    return this.client.request<{ system_prompt: SystemPrompt }>({
+      path: `/v1/collections/${this.collectionID}/system_prompts/get`,
+      params: { system_prompt_id: id },
       method: 'GET',
-      securityLevel: 'read',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public getAllSystemPrompts(): Promise<{ system_prompts: SystemPrompt[] }> {
-    return this.oramaInterface.request<{ system_prompts: SystemPrompt[] }>({
-      url: `/v1/collections/${this.collectionID}/system_prompts/all`,
+  public getAllSystemPrompts(init?: ClientRequestInit): Promise<{ system_prompts: SystemPrompt[] }> {
+    return this.client.request<{ system_prompts: SystemPrompt[] }>({
+      path: `/v1/collections/${this.collectionID}/system_prompts/all`,
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public deleteSystemPrompt(id: string): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
-      url: `/v1/collections/${this.collectionID}/system_prompts/delete`,
+  public deleteSystemPrompt(id: string, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>({
+      path: `/v1/collections/${this.collectionID}/system_prompts/delete`,
       body: { id },
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public updateSystemPrompt(systemPrompt: SystemPrompt): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
-      url: `/v1/collections/${this.collectionID}/system_prompts/update`,
+  public updateSystemPrompt(systemPrompt: SystemPrompt, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>({
+      path: `/v1/collections/${this.collectionID}/system_prompts/update`,
       body: systemPrompt,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
   public validateSystemPrompt(
     systemPrompt: SystemPrompt,
+    init?: ClientRequestInit,
   ): Promise<{ result: SystemPromptValidationResponse }> {
-    return this.oramaInterface.request<{ result: SystemPromptValidationResponse }>({
-      url: `/v1/collections/${this.collectionID}/system_prompts/validate`,
+    return this.client.request<{ result: SystemPromptValidationResponse }>({
+      path: `/v1/collections/${this.collectionID}/system_prompts/validate`,
       body: systemPrompt,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public insertTool(tool: InsertToolBody) {
+  public insertTool(tool: InsertToolBody, init?: ClientRequestInit) {
     let parameters: string
 
     switch (true) {
@@ -527,60 +600,73 @@ public async *NLPSearchStream<R = AnyObject>(
         throw new Error('Invalid parameters type. Must be string, object or ZodType')
     }
 
-    return this.oramaInterface.request<void>({
-      url: `/v1/collections/${this.collectionID}/tools/insert`,
+    return this.client.request<void>({
+      path: `/v1/collections/${this.collectionID}/tools/insert`,
       body: {
         ...tool,
         parameters,
       },
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public getTool(id: string): Promise<{ tool: Tool }> {
-    return this.oramaInterface.request<{ tool: Tool }>({
-      url: `/v1/collections/${this.collectionID}/tools/get`,
-      body: { tool_id: id },
+  public getTool(id: string, init?: ClientRequestInit): Promise<{ tool: Tool }> {
+    return this.client.request<{ tool: Tool }>({
+      path: `/v1/collections/${this.collectionID}/tools/get`,
+      params: { tool_id: id },
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public getAllTools(): Promise<{ tools: Tool[] }> {
-    return this.oramaInterface.request<{ tools: Tool[] }>({
-      url: `/v1/collections/${this.collectionID}/tools/all`,
+  public getAllTools(init?: ClientRequestInit): Promise<{ tools: Tool[] }> {
+    return this.client.request<{ tools: Tool[] }>({
+      path: `/v1/collections/${this.collectionID}/tools/all`,
       method: 'GET',
-      securityLevel: 'read-query',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
   }
 
-  public deleteTool(id: string): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
-      url: `/v1/collections/${this.collectionID}/tools/delete`,
+  public deleteTool(id: string, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>({
+      path: `/v1/collections/${this.collectionID}/tools/delete`,
       body: { id },
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public updateTool(tool: UpdateToolBody): Promise<{ success: boolean }> {
-    return this.oramaInterface.request<{ success: boolean }>({
-      url: `/v1/collections/${this.collectionID}/tools/update`,
+  public updateTool(tool: UpdateToolBody, init?: ClientRequestInit): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>({
+      path: `/v1/collections/${this.collectionID}/tools/update`,
       body: tool,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
   public async executeTools<Response = AnyObject>(
     tools: ExecuteToolsBody,
+    init?: ClientRequestInit,
   ): Promise<ExecuteToolsParsedResponse<Response>> {
-    const response = await this.oramaInterface.request<ExecuteToolsParsedResponse<string>>({
-      url: `/v1/collections/${this.collectionID}/tools/run`,
+    const response = await this.client.request<ExecuteToolsParsedResponse<string>>({
+      path: `/v1/collections/${this.collectionID}/tools/run`,
       body: tools,
       method: 'POST',
-      securityLevel: 'read',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
     })
 
     if (response.results) {
@@ -615,26 +701,44 @@ public async *NLPSearchStream<R = AnyObject>(
   }
 
   public getIdentity(): string | undefined {
+    if (!this.profile) {
+      throw new Error('Profile is not defined')
+    }
     return this.profile.getIdentity()
   }
 
   public getUserId(): string {
+    if (!this.profile) {
+      throw new Error('Profile is not defined')
+    }
     return this.profile.getUserId()
   }
 
   public getAlias(): string | undefined {
+    if (!this.profile) {
+      throw new Error('Profile is not defined')
+    }
     return this.profile.getAlias()
   }
 
   public async identify(identity: string): Promise<void> {
+    if (!this.profile) {
+      throw new Error('Profile is not defined')
+    }
     await this.profile.identify(identity)
   }
 
   public async alias(alias: string): Promise<void> {
+    if (!this.profile) {
+      throw new Error('Profile is not defined')
+    }
     await this.profile.alias(alias)
   }
 
   public reset(): void {
+    if (!this.profile) {
+      throw new Error('Profile is not defined')
+    }
     this.profile.reset()
   }
 }
@@ -642,10 +746,10 @@ public async *NLPSearchStream<R = AnyObject>(
 export class Index {
   private indexID: string
   private collectionID: string
-  private oramaInterface: OramaInterface
+  private oramaInterface: Client
 
   constructor(
-    oramaInterface: OramaInterface,
+    oramaInterface: Client,
     collectionID: string,
     indexID: string,
   ) {
@@ -654,38 +758,46 @@ export class Index {
     this.oramaInterface = oramaInterface
   }
 
-  public async reindex(): Promise<void> {
+  public async reindex(init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
-      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/reindex`,
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/reindex`,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public async insertDocuments(documents: AnyObject | AnyObject[]): Promise<void> {
-    await this.oramaInterface.request<void, AnyObject[]>({
-      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
+  public async insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<void> {
+    await this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
       body: Array.isArray(documents) ? documents : [documents],
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public async deleteDocuments(documentIDs: string | string[]): Promise<void> {
-    await this.oramaInterface.request<void, string[]>({
-      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/delete`,
+  public async deleteDocuments(documentIDs: string | string[], init?: ClientRequestInit): Promise<void> {
+    await this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/delete`,
       body: Array.isArray(documentIDs) ? documentIDs : [documentIDs],
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public async upsertDocuments(documents: AnyObject[]): Promise<void> {
-    await this.oramaInterface.request<void, AnyObject[]>({
-      url: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
+  public async upsertDocuments(documents: AnyObject[], init?: ClientRequestInit): Promise<void> {
+    await this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
       body: documents,
       method: 'POST',
-      securityLevel: 'write',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 }
