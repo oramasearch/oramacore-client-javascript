@@ -272,21 +272,21 @@ async function request<R = unknown>(path: string, body = {}, apiKey: string, url
     throw new Error(`Request failed with status ${resp.status}. ${errorText}`)
   }
 
-  const respText = await resp.text();
+  const respText = await resp.text()
 
   if (!respText) {
-    return null as R;
+    return null as R
   }
 
-  let respBody: any;
+  let respBody: any
   try {
-    respBody = JSON.parse(respText);
+    respBody = JSON.parse(respText)
   } catch (error) {
-    throw new Error(`Invalid JSON Error: ${error}`);
+    throw new Error(`Invalid JSON Error: ${error}`)
   }
 
   if (respBody?.error) {
-    throw new Error(`Request failed: ${respBody.error}`);
+    throw new Error(`Request failed: ${respBody.error}`)
   }
 
   return respBody as R

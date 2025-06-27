@@ -76,12 +76,12 @@ const DEAFULT_JWT_URL = 'https://app.orama.com/api/user/jwt'
 
 export interface CollectionManagerConfig {
   cluster?: {
-    writerURL?: string,
-    readURL?: string,
-  },
-  collectionID: string,
-  apiKey: string,
-  authJwtURL?: string,
+    writerURL?: string
+    readURL?: string
+  }
+  collectionID: string
+  apiKey: string
+  authJwtURL?: string
 }
 
 export class CollectionManager {
@@ -166,54 +166,54 @@ export class CollectionManager {
     })
   }
 
-public async *NLPSearchStream<R = AnyObject>(
-  params: NLPSearchParams,
-  init?: ClientRequestInit
-): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
-  const body = {
-    query: params.query,
-    llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
-  }
+  public async *NLPSearchStream<R = AnyObject>(
+    params: NLPSearchParams,
+    init?: ClientRequestInit,
+  ): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
+    const body = {
+      query: params.query,
+      llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
+    }
 
-  const response = await this.client.requestStream({
-    method: 'POST',
-    path: `/v1/collections/${this.collectionID}/nlp_search_stream`,
-    body: body,
-    init,
-    apiKeyPosition: 'query-params',
-    target: 'reader',
-  })
+    const response = await this.client.requestStream({
+      method: 'POST',
+      path: `/v1/collections/${this.collectionID}/nlp_search_stream`,
+      body: body,
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
+    })
 
-  // Get the reader from the ReadableStream
-  const reader = response.getReader()
+    // Get the reader from the ReadableStream
+    const reader = response.getReader()
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      
-      if (done) {
-        break
-      }
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
 
-      if (value) {
-        try {
-          const streamResult = this.parseStreamResult<R>(value)
-          if (streamResult) {
-            yield streamResult
-          }
-        } catch (parseError) {
-          // Log the error and break the stream
-          console.warn('Failed to parse stream result:', parseError, 'Raw data:', value.data)
-          yield { status: 'PARSE_ERROR' }
+        if (done) {
           break
         }
+
+        if (value) {
+          try {
+            const streamResult = this.parseStreamResult<R>(value)
+            if (streamResult) {
+              yield streamResult
+            }
+          } catch (parseError) {
+            // Log the error and break the stream
+            console.warn('Failed to parse stream result:', parseError, 'Raw data:', value.data)
+            yield { status: 'PARSE_ERROR' }
+            break
+          }
+        }
       }
+    } finally {
+      // Always release the reader when done
+      reader.releaseLock()
     }
-  } finally {
-    // Always release the reader when done
-    reader.releaseLock()
   }
-}
 
   private parseStreamResult<R = AnyObject>(result: SSEEvent) {
     if (!result.data) {
@@ -511,7 +511,10 @@ public async *NLPSearchStream<R = AnyObject>(
     })
   }
 
-  public insertSystemPrompt(systemPrompt: InsertSystemPromptBody, init?: ClientRequestInit): Promise<{ success: boolean }> {
+  public insertSystemPrompt(
+    systemPrompt: InsertSystemPromptBody,
+    init?: ClientRequestInit,
+  ): Promise<{ success: boolean }> {
     return this.client.request<UpdateTriggerResponse>({
       path: `/v1/collections/${this.collectionID}/system_prompts/insert`,
       body: systemPrompt,

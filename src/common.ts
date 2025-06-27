@@ -1,27 +1,29 @@
 import { EventsStreamTransformer, type SSEEvent } from './lib/event-stream.ts'
 
 type JWTRequestResponse = {
-  jwt: string;
-  writerURL: string;
-  readerApiKey: string;
-  readerURL: string;
-  expiresIn: number; // not used for now
-};
+  jwt: string
+  writerURL: string
+  readerApiKey: string
+  readerURL: string
+  expiresIn: number // not used for now
+}
 
 export type ApiKeyPosition = 'header' | 'query-params'
-export type ClientRequestInit = Omit<RequestInit, 'method' | 'headers' | 'body'>;
-type AuthConfig = {
-  readerURL?: string,
-  writerURL?: string,
-} & ({
-  type: 'apiKey',
-  apiKey: string,
-} | {
-  type: 'jwt',
-  authJwtURL: string,
-  collectionID: string,
-  privateApiKey: string,
-})
+export type ClientRequestInit = Omit<RequestInit, 'method' | 'headers' | 'body'>
+type AuthConfig =
+  & {
+    readerURL?: string
+    writerURL?: string
+  }
+  & ({
+    type: 'apiKey'
+    apiKey: string
+  } | {
+    type: 'jwt'
+    authJwtURL: string
+    collectionID: string
+    privateApiKey: string
+  })
 
 export class Auth {
   private config: AuthConfig
@@ -34,19 +36,23 @@ export class Auth {
     target: ClientRequest['target'],
     init?: ClientRequestInit,
   ): Promise<{
-    bearer: string,
-    baseURL: string,
+    bearer: string
+    baseURL: string
   }> {
-    let bearer: string;
-    let baseURL: string;
+    let bearer: string
+    let baseURL: string
     switch (this.config.type) {
       case 'apiKey': {
         bearer = this.config.apiKey
         if (target == 'writer' && !this.config.writerURL) {
-          throw new Error('Cannot perform a request to a writer without the writerURL. Use `cluster.writerURL` to configure it')
+          throw new Error(
+            'Cannot perform a request to a writer without the writerURL. Use `cluster.writerURL` to configure it',
+          )
         }
         if (target == 'reader' && !this.config.readerURL) {
-          throw new Error('Cannot perform a request to a writer without the writerURL. Use `cluster.readerURL` to configure it')
+          throw new Error(
+            'Cannot perform a request to a writer without the writerURL. Use `cluster.readerURL` to configure it',
+          )
         }
         baseURL = target == 'writer' ? this.config.writerURL! : this.config.readerURL!
         break
@@ -56,7 +62,7 @@ export class Auth {
           this.config.authJwtURL,
           this.config.collectionID,
           this.config.privateApiKey,
-          init
+          init,
         )
         // NB: This allow us to support at *client side* a way invocation to reader with private api key!!
         if (target == 'reader') {
@@ -79,16 +85,16 @@ export class Auth {
 
 export type ClientRequest = {
   target: 'reader' | 'writer'
-  method: 'GET' | 'POST',
-  path: string,
-  body?: object,
-  params?: Record<string, string>,
-  init?: ClientRequestInit,
-  apiKeyPosition: ApiKeyPosition,
+  method: 'GET' | 'POST'
+  path: string
+  body?: object
+  params?: Record<string, string>
+  init?: ClientRequestInit
+  apiKeyPosition: ApiKeyPosition
 }
 
 export interface ClientConfig {
-  auth: Auth,
+  auth: Auth
 }
 
 export class Client {
@@ -109,7 +115,9 @@ export class Client {
         text = `Unable to got response body ${e}`
       }
       throw new Error(
-        `Request to "${req.path}?${new URLSearchParams(req.params ?? {}).toString()}" failed with status ${response.status}: ${text}`,
+        `Request to "${req.path}?${
+          new URLSearchParams(req.params ?? {}).toString()
+        }" failed with status ${response.status}: ${text}`,
       )
     }
 
@@ -141,7 +149,8 @@ export class Client {
     } = await this.config.auth.getRef(target, init)
 
     console.log({
-      baseURL, bearer,
+      baseURL,
+      bearer,
     })
 
     const remoteURL = new URL(path, baseURL)
@@ -172,8 +181,6 @@ export class Client {
 
     const response = await fetch(remoteURL, requestObject)
     if (response.status === 401) {
-
-
       console.log(remoteURL, requestObject)
 
       throw new Error(
@@ -193,18 +200,18 @@ async function getJwtToken(
   const payload = {
     collectionId,
     privateApiKey,
-  };
+  }
   const request = await fetch(authJwtUrl, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
     ...init,
-  });
+  })
 
   if (!request.ok) {
-    throw new Error(`JWT request to ${request.url} failed with status ${request.status}: ${await request.text()}`);
+    throw new Error(`JWT request to ${request.url} failed with status ${request.status}: ${await request.text()}`)
   }
 
   const a = await (request.json() as Promise<JWTRequestResponse>)

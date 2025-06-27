@@ -47,10 +47,10 @@ export type AnswerConfig = {
   sessionID?: string
   messages?: Message[]
   related?: Nullable<RelatedQuestionsConfig>
-  datasourceIDs?: string[],
-  min_similarity?: number,
-  max_documents?: number,
-  ragat_notation?: string,
+  datasourceIDs?: string[]
+  min_similarity?: number
+  max_documents?: number
+  ragat_notation?: string
 }
 
 export type PlanAction = {
@@ -551,7 +551,10 @@ export class AnswerSession {
     this.pushState()
   }
 
-  public async regenerateLast({ stream = true } = {}, init?: ClientRequestInit): Promise<string | AsyncGenerator<string>> {
+  public async regenerateLast(
+    { stream = true } = {},
+    init?: ClientRequestInit,
+  ): Promise<string | AsyncGenerator<string>> {
     if (this.state.length === 0 || this.messages.length === 0) {
       throw new Error('No messages to regenerate')
     }

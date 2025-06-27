@@ -1,5 +1,5 @@
 import type { AnyObject, EmbeddingsModel, Language, Maybe, Nullable } from './lib/types.ts'
-import { Client, Auth, ClientRequestInit } from './common.ts'
+import { Auth, Client, ClientRequestInit } from './common.ts'
 import { createRandomString } from './lib/utils.ts'
 
 export type OramaCoreManagerConfig = {
@@ -54,11 +54,14 @@ export class OramaCoreManager {
         apiKey: config.masterAPIKey,
         writerURL: config.url,
         readerURL: undefined,
-      })
+      }),
     })
   }
 
-  public async createCollection(config: CreateCollectionParams, init?: ClientRequestInit): Promise<NewCollectionResponse> {
+  public async createCollection(
+    config: CreateCollectionParams,
+    init?: ClientRequestInit,
+  ): Promise<NewCollectionResponse> {
     const body: AnyObject = {
       id: config.id,
       description: config.description,
