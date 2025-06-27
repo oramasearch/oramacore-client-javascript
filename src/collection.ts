@@ -41,6 +41,7 @@ export type CollectionManagerConfig = {
   collectionID: string
   writeAPIKey?: string
   readAPIKey?: string
+  authJwtUrl?: string
 }
 
 type AddHookConfig = {
@@ -95,7 +96,8 @@ export class CollectionManager {
       baseURL: this.url,
       writeAPIKey: this.writeAPIKey,
       readAPIKey: this.readAPIKey,
-      collectionID: this.collectionID
+      collectionID: this.collectionID,
+      authJwtUrl: config.authJwtUrl,
     })
 
     this.profile = new Profile({
@@ -308,7 +310,11 @@ public async *NLPSearchStream<R = AnyObject>(
   }
 
   public setIndex(id: string): Index {
-    return new Index(this.collectionID, id, this.url, this.writeAPIKey, this.readAPIKey)
+    return new Index(
+      this.oramaInterface,
+      this.collectionID,
+      id,
+    )
   }
 
   public getAllDocsInCollection(id: string): Promise<AnyObject[]> {
@@ -638,15 +644,14 @@ export class Index {
   private collectionID: string
   private oramaInterface: OramaInterface
 
-  constructor(collectionID: string, indexID: string, url: string, writeAPIKey?: string, readAPIKey?: string) {
+  constructor(
+    oramaInterface: OramaInterface,
+    collectionID: string,
+    indexID: string,
+  ) {
     this.indexID = indexID
     this.collectionID = collectionID
-    this.oramaInterface = new OramaInterface({
-      baseURL: url,
-      writeAPIKey: writeAPIKey,
-      readAPIKey: readAPIKey,
-      collectionID: collectionID,
-    })
+    this.oramaInterface = oramaInterface
   }
 
   public async reindex(): Promise<void> {

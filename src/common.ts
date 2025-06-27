@@ -8,6 +8,7 @@ type OramaInterfaceConfig = {
   writeAPIKey?: string
   readAPIKey?: string
   collectionID?: string
+  authJwtUrl?: string
 }
 
 type JWTRequestResponse = {
@@ -34,6 +35,7 @@ export class OramaInterface {
   private readAPIKey?: string
   private collectionID?: string;
   private jwtToken?: string;
+  private authJwtUrl?: string;
 
   constructor(config: OramaInterfaceConfig) {
     this.baseURL = config.baseURL
@@ -41,6 +43,7 @@ export class OramaInterface {
     this.writeAPIKey = config.writeAPIKey
     this.readAPIKey = config.readAPIKey
     this.collectionID = config.collectionID
+    this.authJwtUrl = config.authJwtUrl
   }
 
   public async request<T = unknown, B = AnyObject>(
@@ -54,6 +57,7 @@ export class OramaInterface {
     const requestObject: Partial<RequestInit> = {
       method: config.method,
       headers,
+      signal: config.signal,
     }
 
     if (config.body && config.method !== 'GET') {
@@ -170,7 +174,7 @@ export class OramaInterface {
   private async getJwtToken<T = unknown, B = AnyObject>(
       config: RequestConfig<B>,
     ): Promise<string> {
-      const issuer = "https://cloud.orama.com/api/user/jwt"; // Should somehow be stable and/or extacted from some initial request to the main node
+      const issuer = this.authJwtUrl || "https://cloud.orama.com/api/user/jwt";
       const headers = {
         "Content-Type": "application/json",
       };
