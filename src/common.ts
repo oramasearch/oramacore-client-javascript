@@ -62,15 +62,16 @@ export class Auth {
           this.config.authJwtURL,
           this.config.collectionID,
           this.config.privateApiKey,
+          'write',
           init,
         )
         // NB: This allow us to support at *client side* a way invocation to reader with private api key!!
         if (target == 'reader') {
-          baseURL = ret.readerURL
+          baseURL = this.config.readerURL ?? ret.readerURL
           bearer = ret.readerApiKey
         } else {
           bearer = ret.jwt
-          baseURL = ret.writerURL
+          baseURL = this.config.writerURL ?? ret.writerURL
         }
         break
       }
@@ -188,11 +189,13 @@ async function getJwtToken(
   authJwtUrl: string,
   collectionId: string,
   privateApiKey: string,
+  scope: 'write',
   init?: ClientRequestInit,
 ): Promise<JWTRequestResponse> {
   const payload = {
     collectionId,
     privateApiKey,
+    scope,
   }
   const request = await fetch(authJwtUrl, {
     method: 'POST',
