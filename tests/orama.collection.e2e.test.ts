@@ -20,10 +20,12 @@ await manager.createCollection({
 })
 
 const collectionManager = new CollectionManager({
-  url: 'http://localhost:8080',
+  cluster: {
+    readURL: 'http://localhost:8080',
+    writerURL: 'http://localhost:8080',
+  },
   collectionID: id,
-  readAPIKey,
-  writeAPIKey,
+  apiKey: writeAPIKey,
 })
 
 Deno.test('CollectionManager: create an index', async () => {
@@ -349,14 +351,13 @@ Deno.test('CollectionManager: can insert and retrieve a tool', async () => {
       divisor: z.number().describe('The number to divide by'),
     }),
   })
-
-  const retrievedTool = await collectionManager.getTool('123')
+  const retrievedTool = await collectionManager.getTool('run_division')
 
   assertEquals(retrievedTool.tool.id, 'run_division')
   assertEquals(retrievedTool.tool.description, 'Run a mathematical division')
   assertEquals(
     retrievedTool.tool.parameters,
-    '{"type":"object","properties":{"dividend":{"type":"number","description":"The number to be divided"},"divisor":{"type":"number","description":"The number to divide by"}},"required":["dividend","divisor"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}',
+    '{"type":"object","properties":{"dividend":{"type":"number","description":"The number to be divided"},"divisor":{"type":"number","description":"The number to divide by"}},"required":["dividend","divisor"],"additionalProperties":false}',
   )
 })
 

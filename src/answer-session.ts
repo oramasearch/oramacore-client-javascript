@@ -1,5 +1,5 @@
 import { createId } from 'npm:@orama/cuid2@2.2.3'
-import { OramaInterface, safeJSONParse } from './common.ts'
+import { type Client, type ClientRequestInit, safeJSONParse } from './common.ts'
 import { knownActionsArray } from './const.ts'
 import { hasLocalStorage, isServerRuntime } from './lib/utils.ts'
 import { DEFAULT_SERVER_USER_ID, LOCAL_STORAGE_USER_ID_KEY } from './constants.ts'
@@ -8,13 +8,12 @@ import type { AnyObject, Nullable } from './index.ts'
 import type { CreateAnswerSessionConfig } from './collection.ts'
 
 export type AnswerSessionConfig = {
-  url: string
-  readAPIKey: string
   collectionID: string
   initialMessages?: Message[]
   events?: CreateAnswerSessionConfig['events']
   sessionID?: string
   LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
+  common: Client
 }
 
 type SSEMEssage = {
@@ -48,10 +47,10 @@ export type AnswerConfig = {
   sessionID?: string
   messages?: Message[]
   related?: Nullable<RelatedQuestionsConfig>
-  datasourceIDs?: string[],
-  min_similarity?: number,
-  max_documents?: number,
-  ragat_notation?: string,
+  datasourceIDs?: string[]
+  min_similarity?: number
+  max_documents?: number
+  ragat_notation?: string
 }
 
 export type PlanAction = {
@@ -101,10 +100,8 @@ export type ReasonAnswerResponse = {
 }
 
 export class AnswerSession {
-  private url: string
-  private readAPIKey: string
   private collectionID: string
-  private oramaInterface: OramaInterface
+  private oramaInterface: Client
   private abortController?: AbortController
   private events?: CreateAnswerSessionConfig['events']
   private LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
@@ -115,13 +112,8 @@ export class AnswerSession {
   public state: Interaction[] = []
 
   constructor(config: AnswerSessionConfig) {
-    this.url = config.url
-    this.readAPIKey = config.readAPIKey
     this.collectionID = config.collectionID
-    this.oramaInterface = new OramaInterface({
-      baseURL: this.url,
-      readAPIKey: this.readAPIKey,
-    })
+    this.oramaInterface = config.common
 
     this.LLMConfig = config.LLMConfig
     this.messages = config.initialMessages || []
@@ -129,7 +121,7 @@ export class AnswerSession {
     this.sessionID = config.sessionID || createId()
   }
 
-  public async *answerStream(data: AnswerConfig): AsyncGenerator<string> {
+  public async *answerStream(data: AnswerConfig, init?: ClientRequestInit): AsyncGenerator<string> {
     // Save the last interaction params in case we need to regenerate the last answer.
     this.lastInteractionParams = { ...data, planned: false }
 
@@ -194,9 +186,11 @@ export class AnswerSession {
 
     const reqStream = await this.oramaInterface.requestStream({
       method: 'POST',
-      securityLevel: 'read-query',
-      url: `/v1/collections/${this.collectionID}/answer`,
+      path: `/v1/collections/${this.collectionID}/answer`,
       body,
+      init,
+      apiKeyPosition: 'header',
+      target: 'reader',
     })
 
     const reader = reqStream.getReader()
@@ -285,13 +279,13 @@ export class AnswerSession {
     reader.releaseLock()
   }
 
-  public async answer(data: AnswerConfig): Promise<string> {
+  public async answer(data: AnswerConfig, init?: ClientRequestInit): Promise<string> {
     // Save the last interaction params in case we need to regenerate the last answer.
     this.lastInteractionParams = { ...data, planned: false }
 
     let acc = ''
 
-    for await (const value of this.answerStream(data)) {
+    for await (const value of this.answerStream(data, init)) {
       acc = value
     }
 
@@ -300,27 +294,29 @@ export class AnswerSession {
 
   public async *reasonStream(
     data: AnswerConfig,
+    init?: ClientRequestInit,
   ): AsyncGenerator<string> {
     // Save the last interaction params in case we need to regenerate the last answer.
     this.lastInteractionParams = { ...data, planned: true }
 
-    for await (const _ of this.fetchPlannedAnswer(data)) {
+    for await (const _ of this.fetchPlannedAnswer(data, init)) {
       yield this.state[this.state.length - 1].response
     }
   }
 
-  public async reason(data: AnswerConfig): Promise<string> {
+  public async reason(data: AnswerConfig, init?: ClientRequestInit): Promise<string> {
     // Save the last interaction params in case we need to regenerate the last answer.
     this.lastInteractionParams = { ...data, planned: true }
 
     // deno-lint-ignore no-empty
-    for await (const _ of this.fetchPlannedAnswer(data)) {}
+    for await (const _ of this.fetchPlannedAnswer(data, init)) {}
 
     return this.state[this.state.length - 1].response
   }
 
   private async *fetchPlannedAnswer(
     data: AnswerConfig,
+    init?: ClientRequestInit,
   ): AsyncGenerator<ReasonAnswerResponse> {
     // Make sure the config contains all the necessary fields.
     data = this.enrichConfig(data)
@@ -364,11 +360,14 @@ export class AnswerSession {
     const currentStateIndex = this.state.length - 1
     const currentMessageIndex = this.messages.length - 1
 
+    const i = init ?? {}
+    i.signal = this.abortController.signal
+
     // The actual request to the server.
     const reqStream = await this.oramaInterface.requestStream({
       method: 'POST',
-      securityLevel: 'read-query',
-      url: `/v1/collections/${this.collectionID}/planned_answer`,
+      init: i,
+      path: `/v1/collections/${this.collectionID}/planned_answer`,
       body: {
         interaction_id: data.interactionID,
         query: data.query,
@@ -381,7 +380,8 @@ export class AnswerSession {
         max_documents: data.max_documents,
         ragat_notation: data.ragat_notation,
       },
-      signal: this.abortController?.signal,
+      apiKeyPosition: 'header',
+      target: 'reader',
     })
 
     const reader = reqStream.getReader()
@@ -551,7 +551,10 @@ export class AnswerSession {
     this.pushState()
   }
 
-  public async regenerateLast({ stream = true } = {}): Promise<string | AsyncGenerator<string>> {
+  public async regenerateLast(
+    { stream = true } = {},
+    init?: ClientRequestInit,
+  ): Promise<string | AsyncGenerator<string>> {
     if (this.state.length === 0 || this.messages.length === 0) {
       throw new Error('No messages to regenerate')
     }
@@ -567,17 +570,17 @@ export class AnswerSession {
 
     if (this.lastInteractionParams?.planned) {
       if (stream) {
-        return this.reasonStream(this.lastInteractionParams as AnswerConfig)
+        return this.reasonStream(this.lastInteractionParams as AnswerConfig, init)
       }
 
-      return this.reason(this.lastInteractionParams as AnswerConfig)
+      return this.reason(this.lastInteractionParams as AnswerConfig, init)
     }
 
     if (stream) {
-      return this.answerStream(this.lastInteractionParams as AnswerConfig)
+      return this.answerStream(this.lastInteractionParams as AnswerConfig, init)
     }
 
-    return this.answer(this.lastInteractionParams as AnswerConfig)
+    return this.answer(this.lastInteractionParams as AnswerConfig, init)
   }
 
   public abort() {

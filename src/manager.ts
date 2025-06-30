@@ -1,5 +1,5 @@
 import type { AnyObject, EmbeddingsModel, Language, Maybe, Nullable } from './lib/types.ts'
-import { OramaInterface } from './common.ts'
+import { Auth, Client, ClientRequestInit } from './common.ts'
 import { createRandomString } from './lib/utils.ts'
 
 export type OramaCoreManagerConfig = {
@@ -45,22 +45,23 @@ export type GetCollectionsResponse = {
 }
 
 export class OramaCoreManager {
-  private url: string
-  private masterAPIKey: string
-  private oramaInterface: OramaInterface
+  private client: Client
 
   constructor(config: OramaCoreManagerConfig) {
-    this.url = config.url
-    this.masterAPIKey = config.masterAPIKey
-    this.oramaInterface = new OramaInterface({
-      baseURL: this.url,
-      masterAPIKey: this.masterAPIKey,
-      writeAPIKey: this.masterAPIKey,
-      readAPIKey: this.masterAPIKey,
+    this.client = new Client({
+      auth: new Auth({
+        type: 'apiKey',
+        apiKey: config.masterAPIKey,
+        writerURL: config.url,
+        readerURL: undefined,
+      }),
     })
   }
 
-  public async createCollection(config: CreateCollectionParams): Promise<NewCollectionResponse> {
+  public async createCollection(
+    config: CreateCollectionParams,
+    init?: ClientRequestInit,
+  ): Promise<NewCollectionResponse> {
     const body: AnyObject = {
       id: config.id,
       description: config.description,
@@ -72,11 +73,13 @@ export class OramaCoreManager {
       body.embeddings_model = config.embeddingsModel
     }
 
-    await this.oramaInterface.request({
-      url: '/v1/collections/create',
+    await this.client.request({
+      path: '/v1/collections/create',
       body,
       method: 'POST',
-      securityLevel: 'master',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
 
     return {
@@ -87,19 +90,36 @@ export class OramaCoreManager {
     } as NewCollectionResponse
   }
 
-  public listCollections(): Promise<GetCollectionsResponse[]> {
-    return this.oramaInterface.request<GetCollectionsResponse[]>({
-      url: '/v1/collections',
+  public listCollections(init?: ClientRequestInit): Promise<GetCollectionsResponse[]> {
+    return this.client.request<GetCollectionsResponse[]>({
+      path: '/v1/collections',
       method: 'GET',
-      securityLevel: 'master',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
-  public getCollection(collectionID: string): Promise<GetCollectionsResponse> {
-    return this.oramaInterface.request<GetCollectionsResponse>({
-      url: `/v1/collections/${collectionID}`,
+  public getCollection(collectionID: string, init?: ClientRequestInit): Promise<GetCollectionsResponse> {
+    return this.client.request<GetCollectionsResponse>({
+      path: `/v1/collections/${collectionID}`,
       method: 'GET',
-      securityLevel: 'master',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public deleteCollection(collectionID: string, init?: ClientRequestInit): Promise<null> {
+    return this.client.request<null>({
+      path: `/v1/collections/delete`,
+      method: 'POST',
+      body: {
+        collection_id_to_delete: collectionID,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 }
