@@ -323,8 +323,6 @@ export class CollectionManager {
       embedding: config.embeddings,
     }
 
-    console.log('this.client', JSON.stringify(this.client, null, 2))
-
     await this.client.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/create`,
       body,

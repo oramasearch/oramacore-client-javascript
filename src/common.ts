@@ -148,11 +148,6 @@ export class Client {
       bearer,
     } = await this.config.auth.getRef(target, init)
 
-    console.log({
-      baseURL,
-      bearer,
-    })
-
     const remoteURL = new URL(path, baseURL)
     const headers = new Headers()
     headers.append('Content-Type', 'application/json')
@@ -181,8 +176,6 @@ export class Client {
 
     const response = await fetch(remoteURL, requestObject)
     if (response.status === 401) {
-      console.log(remoteURL, requestObject)
-
       throw new Error(
         `Unauthorized: are you using the correct Api Key?`,
       )
@@ -214,11 +207,7 @@ async function getJwtToken(
     throw new Error(`JWT request to ${request.url} failed with status ${request.status}: ${await request.text()}`)
   }
 
-  const a = await (request.json() as Promise<JWTRequestResponse>)
-
-  console.log(a, new Error('aaaaaa'))
-
-  return a
+  return request.json() as Promise<JWTRequestResponse>
 }
 
 export function safeJSONParse<T = unknown>(data: string, silent = true): T {
