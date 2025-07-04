@@ -26,13 +26,23 @@ On browsers:
 
 The OramaCore client is made of two distinct classes:
 
-### The OramaCoreManager
+---
 
-This is the class that allows you to manage your entire OramaCore database. Use this for creating
-and managing collections.
+## OramaCoreManager
 
-It requires a **master API key**, so we **STRONGLY DISCOURAGE** using this class in the browser.
+**Purpose:**
+- Used for administrative and global operations, such as creating, listing, and deleting collections.
+- Requires a **master API key**. **Do not use in browsers.**
 
+**Constructor:**
+```js
+new OramaCoreManager({
+  url: string,           // The OramaCore server URL
+  masterAPIKey: string,  // The master API key (admin-level)
+})
+```
+
+**Example:**
 ```js
 import { OramaCoreManager } from '@orama/core'
 
@@ -46,67 +56,68 @@ const newCollection = await manager.createCollection({
   id: 'my-new-collection',
   readAPIKey: 'my-read-api-key',
   writeAPIKey: 'my-write-api-key',
+  description: 'A test collection',
 })
 ```
 
-### The CollectionManager
+---
 
-The collection manager is used to insert documents, perform search operations and answer sessions.
-It requires a **write API key** for inserting, updating and deleting documents and a **read API
-key** to perform search and answer sessions.
+## CollectionManager
 
-We **STRONGLY DISCOURAGE** using the **write API key** on browsers. Use the **read API key** only,
-which is safe to share.
+**Purpose:**
+- Used for all operations within a specific collection: document management, search, index management, segments, triggers, tools, and more.
+- Requires an **API key** (read or write) or a **private API key** (JWT flow).
 
+**Constructor:**
+```js
+new CollectionManager({
+  collectionID: string,      // The unique ID of the collection to operate on (required)
+  apiKey: string,            // The API key for authentication (required). Can be a read, write, or private key (see below).
+  cluster?: {
+    writerURL?: string,      // (Optional) Custom URL for write operations (e.g., inserts, updates, deletes)
+    readURL?: string,        // (Optional) Custom URL for read operations (e.g., search, get)
+  },
+  authJwtURL?: string,       // (Optional) Custom JWT authentication endpoint (used only for private keys)
+})
+```
+
+**Parameter Details:**
+| Parameter         | Type     | Required | Description                                                                                 |
+|-------------------|----------|----------|---------------------------------------------------------------------------------------------|
+| `collectionID`    | string   | Yes      | The ID of the collection to interact with.                                                  |
+| `apiKey`          | string   | Yes      | The API key for authentication. Can be a read key, write key, or a private key (see below). |
+| `cluster.readURL` | string   | No       | Custom base URL for read operations (overrides default cloud endpoint).                     |
+| `cluster.writerURL`| string  | No       | Custom base URL for write operations (overrides default cloud endpoint).                    |
+| `authJwtURL`      | string   | No       | Custom JWT authentication endpoint (only used if `apiKey` is a private key). This overrides the default cloud endpoint                |
+
+**Authentication Logic:**
+- If `apiKey` starts with `'p_'`, it is treated as a **private key** and JWT authentication is used. The SDK will automatically obtain a JWT from `authJwtURL` (or the default cloud endpoint) and use it for write operations.
+- Otherwise, the `apiKey` is used directly for all requests (either as a read or write key, depending on the operation).
+
+**How URLs and Keys Are Used:**
+- The SDK determines whether a request is a read or write operation and selects the appropriate base URL (`readURL` or `writerURL`).
+- If custom URLs are not provided, the SDK defaults to OramaCore Cloud endpoints.
+
+**Example:**
 ```js
 import { CollectionManager } from '@orama/core'
 
 const collectionManager = new CollectionManager({
-  url: 'http://localhost:8080',
   collectionID: 'my-new-collection',
-  readAPIKey: 'my-read-api-key',
+  apiKey: 'my-read-api-key', // or 'my-write-api-key' or 'p_xxx' for private key
+  // Optionally:
+  // cluster: { writerURL: 'https://my-writer-url', readURL: 'https://my-reader-url' },
+  // authJwtURL: 'https://custom-jwt-url',
 })
 
 const result = await collectionManager.search({
   term: 'john',
   mode: 'vector',
   where: {
-    age: {
-      gt: 20,
-    },
+    age: { gt: 20 },
   },
 })
 ```
-
-### The Cloud Manager
-
-You can use this SDK to manage your OramaCloud instances too.
-
-When creating a new **REST API** data source, you can use the **transaction APIs** to correctly update your collections and indexes:
-
-```js
-import { CloudManager } from '@orama/core'
-
-const cloudManager = new CloudManager({
-  url: 'your-api-endpoint',
-  collectionID: 'your-collection-id',
-  privateAPIKey: 'your-private-api-key',
-})
-
-const datasource = cloudManager.setDataSource('your-datasource-id')
-
-await datasource.insertDocuments([
-  { id: '123', title: 'Quick Brown fox' },
-  { id: '456', title: 'Jumping over a lazy dog' }
-])
-
-await datasource.deleteDocuments(['789'])
-
-await datasource.commit()
-```
-
-For the full API reference, please go to
-[https://docs.oramacore.com/docs/apis/introduction#javascript-sdk](https://docs.oramacore.com/docs/apis/introduction#javascript-sdk).
 
 ## License
 
