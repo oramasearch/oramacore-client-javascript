@@ -1,5 +1,5 @@
 import { z } from 'npm:zod@3.24.3'
-import { assertEquals } from 'jsr:@std/assert'
+import { assertEquals, assertNotEquals, assert, assertFalse } from 'jsr:@std/assert'
 import { CollectionManager, OramaCoreManager } from '../src/index.ts'
 import { createRandomString } from '../src/lib/utils.ts'
 
@@ -416,4 +416,77 @@ Deno.test.ignore('CollectionManager: can update a tool', async () => {
 
   assertEquals(updatedTool.success, true)
   assertEquals(checkUpdatedTool.tool.description, 'Run a mathematical subtraction with updated parameters')
+})
+
+Deno.test('CollectionManager: can set hook', async () => {
+  const hooksBefore = await collectionManager.listHooks()
+
+  assertEquals(hooksBefore.BeforeAnswer, null)
+  assertEquals(hooksBefore.BeforeRetrieval, null)
+
+  await collectionManager.insertHook({
+    name: 'BeforeAnswer',
+    code: `
+async function beforeAnswer(a, b) {
+}
+
+export default { beforeAnswer };
+`,
+  })
+
+  const hooksAfter = await collectionManager.listHooks()
+
+  assertNotEquals(hooksAfter.BeforeAnswer, null)
+  assertEquals(hooksAfter.BeforeRetrieval, null)
+
+  await collectionManager.deleteHook('BeforeAnswer')
+
+  const hooksAfterAfter = await collectionManager.listHooks()
+
+  assertEquals(hooksAfterAfter.BeforeAnswer, null)
+  assertEquals(hooksAfterAfter.BeforeRetrieval, null)
+})
+
+Deno.test('CollectionManager: stream logs', async () => {
+  await collectionManager.insertHook({
+    name: 'BeforeRetrieval',
+    code: `
+async function beforeRetrieval(searchParams) {
+  console.log('Before retrieval hook executed', searchParams);
+  return searchParams;
+}
+
+export default { beforeRetrieval };
+`,
+  })
+
+  const ev = await collectionManager.streamLogs()
+
+  const logs: string[] = []
+  ev.addEventListener('message', (event) => {
+    logs.push(event.data)
+  });
+
+  const idx = collectionManager.setIndex(indexID)
+  idx.insertDocuments([
+    { id: '1', name: 'Alice', age: 28 },
+    { id: '2', name: 'Bob', age: 32 },
+  ])
+
+  await new Promise(resolve => setTimeout(resolve, 1000)) // Wait for the hook to be executed
+
+  const session = collectionManager.createAnswerSession({})
+  const output = await session.answer({
+    query: "How old is Alice?",
+  })
+
+  assert(/28/.test(output)) // alice age
+  assertFalse(/32/.test(output)) // bob age
+
+  assert(logs[0], "Connected")
+  assert(/\{/.test(logs[1]))
+  assert(/mode/.test(logs[1]))
+  assert(/\}/.test(logs[1]))
+
+  ev.close()
 })

@@ -189,7 +189,7 @@ export class AnswerSession {
       path: `/v1/collections/${this.collectionID}/answer`,
       body,
       init,
-      apiKeyPosition: 'header',
+      apiKeyPosition: 'query-params',
       target: 'reader',
     })
 

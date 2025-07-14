@@ -135,6 +135,33 @@ export class Client {
     return response.body?.pipeThrough(new EventsStreamTransformer())
   }
 
+  public async eventSource(req: ClientRequest) {
+    if (req.apiKeyPosition !== 'query-params') {
+      throw new Error(
+        `EventSource only supports apiKeyPosition as 'query-params', but got ${req.apiKeyPosition}`,
+      )
+    }
+    if (req.method !== 'GET') {
+      throw new Error(
+        `EventSource only supports GET requests, but got ${req.method}`,
+      )
+    }
+
+    const {
+      baseURL,
+      bearer,
+    } = await this.config.auth.getRef(req.target, req.init)
+    const remoteURL = new URL(req.path, baseURL)
+
+    req.params = req.params ?? {}
+    req.params['api-key'] = bearer
+    if (req.params) {
+      remoteURL.search = new URLSearchParams(req.params).toString()
+    }
+
+    return new EventSource(remoteURL)
+  }
+
   private async getResponse({
     method,
     path,
@@ -179,6 +206,12 @@ export class Client {
     if (response.status === 401) {
       throw new Error(
         `Unauthorized: are you using the correct Api Key?`,
+      )
+    }
+    if (response.status === 400) {
+      const errorText = await response.text()
+      throw new Error(
+        `Bad Request: ${errorText} (path: ${remoteURL.toString()})`,
       )
     }
     return response
