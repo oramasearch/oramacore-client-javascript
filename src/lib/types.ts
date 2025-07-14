@@ -57,7 +57,7 @@ export type EmbeddingsConfig = {
   documentFields: Nullable<string[]>
 }
 
-export type Hook = 'selectEmbeddingProperties'
+export type Hook = 'BeforeAnswer' | 'BeforeRetrieval'
 
 export type SearchMode = 'fulltext' | 'vector' | 'hybrid' | 'auto'
 

@@ -38,13 +38,11 @@ import { flattenZodSchema, formatDuration } from './lib/utils.ts'
 
 type AddHookConfig = {
   name: Hook
-  collectionID: string
   code: string
 }
 
 type NewHookresponse = {
   hookID: string
-  collectionID: string
   code: string
 }
 
@@ -382,7 +380,7 @@ export class CollectionManager {
     }
 
     await this.client.request({
-      path: `/v1/collections/${config.collectionID}/hooks/create`,
+      path: `/v1/collections/${this.collectionID}/hooks/set`,
       body,
       method: 'POST',
       init,
@@ -392,9 +390,46 @@ export class CollectionManager {
 
     return {
       hookID: body.name,
-      collectionID: config.collectionID,
       code: body.code,
     }
+  }
+
+  public async listHooks(init?: ClientRequestInit) {
+    const res = await this.client.request<{ hooks: Record<Hook, string | null> }>({
+      path: `/v1/collections/${this.collectionID}/hooks/list`,
+      method: 'GET',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    });
+
+    return res.hooks || {}
+  }
+
+  public async deleteHook(hook: Hook, init?: ClientRequestInit) {
+    const body = {
+      name_to_delete: hook,
+    }
+
+    await this.client.request({
+      path: `/v1/collections/${this.collectionID}/hooks/delete`,
+      body,
+      method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+
+  public streamLogs(init?: ClientRequestInit) {
+    return this.client.eventSource({
+      path: `/v1/collections/${this.collectionID}/logs`,
+      method: 'GET',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
+    })
   }
 
   public insertSegment(segment: InsertSegmentBody, init?: ClientRequestInit): Promise<InsertSegmentResponse> {
