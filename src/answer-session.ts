@@ -29,6 +29,8 @@ type SSEActionMessage = {
 
 export type Role = 'system' | 'assistant' | 'user'
 
+export type AnswerStep = 'STARTING' | 'GET_SEGMENT' | 'GET_TRIGGER' | 'OPTIMIZING_QUERY' | 'SEARCH_RESULTS' | 'ANSWERING' | 'RELATED_QUERIES' | 'FINISHED'
+
 export type Message = {
   role: Role
   content: string
@@ -92,6 +94,7 @@ export type Interaction<D = AnyObject> = {
   aborted: boolean
   segment: Nullable<Segment>
   related: Nullable<string>
+  currentStep: Nullable<string>
 }
 
 export type ReasonAnswerResponse = {
@@ -156,6 +159,7 @@ export class AnswerSession {
       planExecution: {},
       segment: null,
       related: data.related?.enabled ? '' : null,
+      currentStep: 'STARTING',
     })
 
     // Let's set a new state for the current interaction.
@@ -219,6 +223,7 @@ export class AnswerSession {
                   id: segment.id,
                   name: segment.name,
                 }
+                this.state[currentStateIndex].currentStep = 'GET_SEGMENT'
                 this.pushState()
               }
 
@@ -235,16 +240,20 @@ export class AnswerSession {
                 }
 
                 this.state[currentStateIndex].segment = trigger
+                this.state[currentStateIndex].currentStep = 'GET_TRIGGER'
                 this.pushState()
               }
               break
             }
             case 'OPTIMIZING_QUERY':
               // @todo: understand if we want to expose this to the user.
+              this.state[currentStateIndex].currentStep = 'OPTIMIZING_QUERY'
+              this.pushState()
               break
             case 'SEARCH_RESULTS': {
               const sources = safeJSONParse<any>(result)
               this.state[currentStateIndex].sources = sources
+              this.state[currentStateIndex].currentStep = 'SEARCH_RESULTS'
               this.pushState()
               break
             }
@@ -254,11 +263,13 @@ export class AnswerSession {
 
               yield this.state[currentStateIndex].response
 
+              this.state[currentStateIndex].currentStep = 'ANSWERING'
               this.pushState()
               break
             }
             case 'RELATED_QUERIES': {
               this.state[currentStateIndex].related += result
+              this.state[currentStateIndex].currentStep = 'RELATED_QUERIES'
               this.pushState()
               break
             }
@@ -270,6 +281,7 @@ export class AnswerSession {
 
       if (done) {
         this.state[currentStateIndex].loading = false
+        this.state[currentStateIndex].currentStep = 'FINISHED'
         this.pushState()
 
         break
@@ -349,6 +361,7 @@ export class AnswerSession {
       planExecution: {},
       segment: null,
       related: data.related?.enabled ? '' : null,
+      currentStep: 'STARTING',
     })
 
     // Push the new state.

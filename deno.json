@@ -1,6 +1,6 @@
 {
   "name": "@orama/core",
-  "version": "1.0.0-rc.4",
+  "version": "1.0.0-rc.5",
   "exports": "./src/index.ts",
   "nodeModulesDir": "auto",
   "tasks": {
@@ -11,9 +11,15 @@
     "lineWidth": 120,
     "semiColons": false,
     "singleQuote": true,
-    "include": ["./src/**/*.ts", "./tests/**/*.ts"]
+    "include": [
+      "./src/**/*.ts",
+      "./tests/**/*.ts"
+    ]
   },
   "compilerOptions": {
-    "lib": ["deno.window", "dom"]
+    "lib": [
+      "deno.window",
+      "dom"
+    ]
   }
 }
