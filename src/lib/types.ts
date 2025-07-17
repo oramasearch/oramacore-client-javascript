@@ -73,6 +73,8 @@ export type SearchParams = {
   datasourceIDs?: string[]
   exact?: boolean
   threshold?: number
+  tolerance?: number
+  userID?: string
 }
 
 export type CloudSearchParams = Omit<SearchParams, 'indexes'> & { datasourceIDs?: string[] }

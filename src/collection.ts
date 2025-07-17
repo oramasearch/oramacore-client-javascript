@@ -47,8 +47,9 @@ type NewHookresponse = {
 }
 
 export type NLPSearchParams = {
-  query: string
-  LLMConfig?: LLMConfig
+  query: string,
+  LLMConfig?: LLMConfig,
+  userID?: string,
 }
 
 export type LLMConfig = {
@@ -132,7 +133,8 @@ export class CollectionManager {
     const result = await this.client.request<Omit<SearchResult<R>, 'elapsed'>>({
       path: `/v1/collections/${this.collectionID}/search`,
       body: {
-        ...restQuery,
+        userID: this.profile?.getUserId() || undefined,
+        ...restQuery, // restQuery can override `userID`
         indexes: datasourceIDs || indexes,
       },
       method: 'POST',
@@ -157,7 +159,10 @@ export class CollectionManager {
     return this.client.request({
       method: 'POST',
       path: `/v1/collections/${this.collectionID}/nlp_search`,
-      body: params,
+      body: {
+        userID: this.profile?.getUserId() || undefined,
+        ...params,
+      },
       init,
       apiKeyPosition: 'query-params',
       target: 'reader',
@@ -171,6 +176,7 @@ export class CollectionManager {
     const body = {
       query: params.query,
       llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
+      userID: this.profile?.getUserId() || undefined,
     }
 
     const response = await this.client.requestStream({
@@ -420,7 +426,6 @@ export class CollectionManager {
       target: 'writer',
     })
   }
-
 
   public streamLogs(init?: ClientRequestInit) {
     return this.client.eventSource({
