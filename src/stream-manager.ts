@@ -1,4 +1,4 @@
-import type { AdvancedAutoqueryEvent, AnswerEvent } from 'npm:@orama/oramacore-events-parser@0.0.4'
+import type { AdvancedAutoqueryEvent, AnswerEvent } from 'npm:@orama/oramacore-events-parser@0.0.5'
 import type { AnyObject, Nullable, SearchParams, SearchResult } from './index.ts'
 import type { Client, ClientRequestInit } from './common.ts'
 

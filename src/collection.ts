@@ -37,7 +37,7 @@ import { Profile } from './profile.ts'
 import { OramaCoreStream } from './stream-manager.ts'
 import { Auth, Client } from './common.ts'
 import { flattenZodSchema, formatDuration } from './lib/utils.ts'
-import { parseNLPQueryStream } from 'npm:@orama/oramacore-events-parser@0.0.4'
+import { parseNLPQueryStream } from 'npm:@orama/oramacore-events-parser@0.0.5'
 import { dedupe } from './index.ts'
 
 type AddHookConfig = {
