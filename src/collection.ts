@@ -11,6 +11,7 @@ import type {
   NLPSearchResult,
   NLPSearchStreamResult,
   NLPSearchStreamStatus,
+  Nullable,
   SearchParams,
   SearchResult,
   Segment,
@@ -29,12 +30,15 @@ import type {
   UpdateToolBody,
   UpdateTriggerResponse,
 } from './index.ts'
-import type { Interaction, Message } from './answer-session.ts'
+import type { CreateAnswerSessionConfig } from './stream-manager.ts'
+import type { ClientConfig, ClientRequestInit } from './common.ts'
 
 import { Profile } from './profile.ts'
-import { AnswerSession } from './answer-session.ts'
-import { Auth, Client, type ClientConfig, type ClientRequestInit } from './common.ts'
+import { OramaCoreStream } from './stream-manager.ts'
+import { Auth, Client } from './common.ts'
 import { flattenZodSchema, formatDuration } from './lib/utils.ts'
+import { parseNLPQueryStream } from 'npm:@orama/oramacore-events-parser@0.0.4'
+import { dedupe } from './index.ts'
 
 type AddHookConfig = {
   name: Hook
@@ -47,22 +51,14 @@ type NewHookresponse = {
 }
 
 export type NLPSearchParams = {
-  query: string,
-  LLMConfig?: LLMConfig,
-  userID?: string,
+  query: string
+  LLMConfig?: LLMConfig
+  userID?: string
 }
 
 export type LLMConfig = {
   provider: 'openai' | 'fireworks' | 'together' | 'google'
   model: string
-}
-
-export type CreateAnswerSessionConfig = {
-  LLMConfig?: LLMConfig
-  initialMessages?: Message[]
-  events?: {
-    onStateChange: (state: Interaction[]) => void
-  }
 }
 
 export type CreateIndexParams = {
@@ -174,141 +170,75 @@ export class CollectionManager {
     init?: ClientRequestInit,
   ): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
     const body = {
-      query: params.query,
       llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
       userID: this.profile?.getUserId() || undefined,
+      messages: [
+        {
+          role: 'user',
+          content: params.query,
+        },
+      ],
     }
 
-    const response = await this.client.requestStream({
+    const response = await this.client.getResponse({
       method: 'POST',
-      path: `/v1/collections/${this.collectionID}/nlp_search_stream`,
+      path: `/v1/collections/${this.collectionID}/generate/nlp_query`,
       body: body,
       init,
       apiKeyPosition: 'query-params',
       target: 'reader',
     })
 
-    // Get the reader from the ReadableStream
-    const reader = response.getReader()
+    if (!response.body) {
+      throw new Error('No response body')
+    }
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
+    let finished = false
+    let currentResult: Nullable<NLPSearchStreamResult<R>> = null
 
-        if (done) {
-          break
-        }
+    const emitter = parseNLPQueryStream(response.body)
 
-        if (value) {
-          try {
-            const streamResult = this.parseStreamResult<R>(value)
-            if (streamResult) {
-              yield streamResult
-            }
-          } catch (parseError) {
-            // Log the error and break the stream
-            console.warn('Failed to parse stream result:', parseError, 'Raw data:', value.data)
-            yield { status: 'PARSE_ERROR' }
-            break
-          }
-        }
+    emitter.on('error', (e) => {
+      if (e.is_terminal) {
+        finished = true
       }
-    } finally {
-      // Always release the reader when done
-      reader.releaseLock()
-    }
-  }
+      throw new Error(e.error)
+    })
 
-  private parseStreamResult<R = AnyObject>(result: SSEEvent) {
-    if (!result.data) {
-      return null
-    }
-
-    let parsedResult: unknown
-    try {
-      parsedResult = JSON.parse(result.data)
-    } catch {
-      // If it's not valid JSON, treat it as a status string
-      return { status: result.data as NLPSearchStreamStatus }
-    }
-
-    // Handle simple string statuses (like "INIT", "OPTIMIZING_QUERY", "SEARCHING")
-    if (typeof parsedResult === 'string') {
-      return { status: parsedResult as NLPSearchStreamStatus }
-    }
-
-    // Handle object responses with data
-    if (this.isValidObject(parsedResult)) {
-      const entries = Object.entries(parsedResult)
-      if (entries.length === 0) {
-        return null
-      }
-
-      const [key, value] = entries[0]
-      const status = key as NLPSearchStreamStatus
-
-      // Return status-only for simple cases
-      if (value === undefined || value === null) {
-        return { status }
-      }
-
-      // Handle special case for GENERATED_QUERIES
-      if (status === 'GENERATED_QUERIES') {
-        return {
-          status,
-          data: this.parseGeneratedQueries(value) as R[] | GeneratedQuery[],
-        }
-      }
-
-      // For all other cases with data, return as-is
-      return {
-        status,
-        data: value as R | R[],
-      }
-    }
-
-    return null
-  }
-
-  private isValidObject(value: unknown): value is Record<string, any> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-  }
-
-  private parseGeneratedQueries(queries: any): GeneratedQuery[] {
-    if (!Array.isArray(queries)) {
-      console.warn('Expected array for GENERATED_QUERIES, got:', typeof queries)
-      return []
-    }
-
-    return queries.map((data: any, index: number): GeneratedQuery => {
-      try {
-        let generatedQuery: any
-
-        // Handle the generated_query_text parsing
-        if (typeof data.generated_query_text === 'string') {
-          generatedQuery = JSON.parse(data.generated_query_text)
-        } else {
-          generatedQuery = data.generated_query_text || {}
-        }
-
-        return {
-          index: typeof data.index === 'number' ? data.index : index,
-          original_query: data.original_query || '',
-          generated_query: generatedQuery,
-        }
-      } catch (error) {
-        console.warn(`Failed to parse generated query at index ${index}:`, error)
-        return {
-          index,
-          original_query: data.original_query || '',
-          generated_query: {
-            term: '',
-            mode: 'fulltext',
-            properties: [],
-          },
-        }
+    emitter.on('state_changed', (event) => {
+      currentResult = {
+        status: event.state as NLPSearchStreamStatus,
+        data: event.data as R[],
       }
     })
+
+    emitter.on('search_results', (event) => {
+      currentResult = {
+        status: 'SEARCH_RESULTS',
+        data: event.results as R[],
+      }
+      finished = true
+    })
+
+    // Yield results until we get search results
+    while (!finished) {
+      if (currentResult !== null) {
+        const deduped = dedupe((currentResult as NLPSearchStreamResult<R>).status)
+        if (deduped) {
+          yield currentResult
+        }
+      }
+      // Small delay to prevent busy waiting
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+
+    // Yield the final search results
+    if (currentResult !== null) {
+      const deduped = dedupe((currentResult as NLPSearchStreamResult<R>).status)
+      if (deduped) {
+        yield currentResult
+      }
+    }
   }
 
   public getStats(collectionID: string, init?: ClientRequestInit): Promise<AnyObject> {
@@ -367,12 +297,12 @@ export class CollectionManager {
     })
   }
 
-  public createAnswerSession(config?: CreateAnswerSessionConfig): AnswerSession {
+  public createAISession(config?: CreateAnswerSessionConfig): OramaCoreStream {
     if (!this.apiKey) {
       throw new Error('Read API key is required to create an answer session')
     }
 
-    return new AnswerSession({
+    return new OramaCoreStream({
       collectionID: this.collectionID,
       common: this.client,
       ...config,
@@ -407,7 +337,7 @@ export class CollectionManager {
       init,
       apiKeyPosition: 'header',
       target: 'writer',
-    });
+    })
 
     return res.hooks || {}
   }

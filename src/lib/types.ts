@@ -1,6 +1,6 @@
 import type { ZodType } from 'npm:zod@3.24.3'
 
-import type { Message } from '../answer-session.ts'
+import type { Message } from '../stream-manager.ts'
 import type { LLMConfig } from '../collection.ts'
 
 export type Nullable<T = unknown> = T | null
