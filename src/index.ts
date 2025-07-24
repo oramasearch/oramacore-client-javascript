@@ -1,7 +1,7 @@
 export { STATES_STEPS as answerSessionSteps } from 'npm:@orama/oramacore-events-parser@0.0.5'
-export type { AnswerConfig, AnswerSessionConfig, Interaction } from './answer-session.ts'
+export type { AnswerConfig, AnswerSessionConfig, Interaction } from './stream-manager.ts'
 
-export { OramaCoreStream as AnswerSession } from './answer-session.ts'
+export { OramaCoreStream as AnswerSession } from './stream-manager.ts'
 
 export * from './lib/types.ts'
 export { createRandomString } from './lib/utils.ts'

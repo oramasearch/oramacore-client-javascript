@@ -7,6 +7,7 @@ import { parseAnswerStream } from 'npm:@orama/oramacore-events-parser@0.0.5'
 import { hasLocalStorage, isServerRuntime } from './lib/utils.ts'
 import { DEFAULT_SERVER_USER_ID, LOCAL_STORAGE_USER_ID_KEY } from './constants.ts'
 import { safeJSONParse } from './common.ts'
+import { dedupe } from './index.ts'
 
 export type AnswerSessionConfig = {
   collectionID: string
@@ -275,9 +276,12 @@ export class OramaCoreStream {
             this.state[currentStateIndex].advancedAutoquery = {}
           }
           this.state[currentStateIndex].advancedAutoquery!.optimizedQueries = eventData.optimized_queries
-          this.state[currentStateIndex].currentStepVerbose = this.state[currentStateIndex].advancedAutoquery!
-            .optimizedQueries?.join('\nAlso, ')!
-          this._pushState()
+          const verboseMessage = this.state[currentStateIndex].advancedAutoquery!.optimizedQueries?.join('\nAlso, ')!
+          const deduped = dedupe(verboseMessage)
+          if (deduped) {
+            this.state[currentStateIndex].currentStepVerbose = verboseMessage
+            this._pushState()
+          }
         }
 
         if (event.state === 'advanced_autoquery_properties_selected' && eventData?.selected_properties) {
@@ -287,8 +291,12 @@ export class OramaCoreStream {
           this.state[currentStateIndex].advancedAutoquery!.selectedProperties = eventData.selected_properties
           const filters = this.state[currentStateIndex].advancedAutoquery!.selectedProperties?.map(Object.values).flat()
             .map((x) => x.selected_properties).flat().map((x) => `${x.property}`).join(', ')
-          this.state[currentStateIndex].currentStepVerbose = `Filtering by ${filters}`
-          this._pushState()
+          const verboseMessage = `Filtering by ${filters}`
+          const deduped = dedupe(verboseMessage)
+          if (deduped) {
+            this.state[currentStateIndex].currentStepVerbose = verboseMessage
+            this._pushState()
+          }
         }
 
         if (event.state === 'advanced_autoquery_combine_queries' && eventData?.queries_and_properties) {
@@ -318,10 +326,12 @@ export class OramaCoreStream {
             0,
           )
           const resultText = eventData.search_results.map((x: any) => JSON.parse(x.generated_query).term).join(', ')
-          this.state[currentStateIndex].currentStepVerbose = `Found ${resultsCount} result${
-            resultsCount === 1 ? '' : 's'
-          } for "${resultText}"`
-          this._pushState()
+          const verboseMessage = `Found ${resultsCount} result${resultsCount === 1 ? '' : 's'} for "${resultText}"`
+          const deduped = dedupe(verboseMessage)
+          if (deduped) {
+            this.state[currentStateIndex].currentStepVerbose = verboseMessage
+            this._pushState()
+          }
         }
 
         if (event.state === 'advanced_autoquery_completed' && eventData?.results) {
