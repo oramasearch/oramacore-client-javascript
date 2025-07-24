@@ -1,5 +1,5 @@
 import { z } from 'npm:zod@3.24.3'
-import { assertEquals, assertNotEquals, assert, assertFalse } from 'jsr:@std/assert'
+import { assert, assertEquals, assertFalse, assertNotEquals } from 'jsr:@std/assert'
 import { CollectionManager, OramaCoreManager } from '../src/index.ts'
 import { createRandomString } from '../src/lib/utils.ts'
 
@@ -465,7 +465,7 @@ export default { beforeRetrieval };
   const logs: string[] = []
   ev.addEventListener('message', (event) => {
     logs.push(event.data)
-  });
+  })
 
   const idx = collectionManager.setIndex(indexID)
   idx.insertDocuments([
@@ -473,17 +473,17 @@ export default { beforeRetrieval };
     { id: '2', name: 'Bob', age: 32 },
   ])
 
-  await new Promise(resolve => setTimeout(resolve, 1000)) // Wait for the hook to be executed
+  await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait for the hook to be executed
 
   const session = collectionManager.createAnswerSession({})
   const output = await session.answer({
-    query: "How old is Alice?",
+    query: 'How old is Alice?',
   })
 
   assert(/28/.test(output)) // alice age
   assertFalse(/32/.test(output)) // bob age
 
-  assert(logs[0], "Connected")
+  assert(logs[0], 'Connected')
   assert(/\{/.test(logs[1]))
   assert(/mode/.test(logs[1]))
   assert(/\}/.test(logs[1]))

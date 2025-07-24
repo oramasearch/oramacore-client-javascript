@@ -10,20 +10,27 @@ type JWTRequestResponse = {
 
 export type ApiKeyPosition = 'header' | 'query-params'
 export type ClientRequestInit = Omit<RequestInit, 'method' | 'headers' | 'body'>
+
+type ReadWriteAuth = {
+  readerURL?: string
+  writerURL?: string
+}
+
+type ApiKeyAuth = {
+  type: 'apiKey'
+  apiKey: string
+}
+
+type JwtAuth = {
+  type: 'jwt'
+  authJwtURL: string
+  collectionID: string
+  privateApiKey: string
+}
+
 type AuthConfig =
-  & {
-    readerURL?: string
-    writerURL?: string
-  }
-  & ({
-    type: 'apiKey'
-    apiKey: string
-  } | {
-    type: 'jwt'
-    authJwtURL: string
-    collectionID: string
-    privateApiKey: string
-  })
+  & ReadWriteAuth
+  & (ApiKeyAuth | JwtAuth)
 
 export class Auth {
   private config: AuthConfig
@@ -162,7 +169,7 @@ export class Client {
     return new EventSource(remoteURL)
   }
 
-  private async getResponse({
+  async getResponse({
     method,
     path,
     body,

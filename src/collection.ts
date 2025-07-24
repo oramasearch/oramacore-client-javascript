@@ -29,11 +29,12 @@ import type {
   UpdateToolBody,
   UpdateTriggerResponse,
 } from './index.ts'
-import type { Interaction, Message } from './answer-session.ts'
+import type { CreateAnswerSessionConfig } from './answer-session.ts'
+import type { ClientConfig, ClientRequestInit } from './common.ts'
 
 import { Profile } from './profile.ts'
-import { AnswerSession } from './answer-session.ts'
-import { Auth, Client, type ClientConfig, type ClientRequestInit } from './common.ts'
+import { OramaCoreStream } from './answer-session.ts'
+import { Auth, Client } from './common.ts'
 import { flattenZodSchema, formatDuration } from './lib/utils.ts'
 
 type AddHookConfig = {
@@ -47,22 +48,14 @@ type NewHookresponse = {
 }
 
 export type NLPSearchParams = {
-  query: string,
-  LLMConfig?: LLMConfig,
-  userID?: string,
+  query: string
+  LLMConfig?: LLMConfig
+  userID?: string
 }
 
 export type LLMConfig = {
   provider: 'openai' | 'fireworks' | 'together' | 'google'
   model: string
-}
-
-export type CreateAnswerSessionConfig = {
-  LLMConfig?: LLMConfig
-  initialMessages?: Message[]
-  events?: {
-    onStateChange: (state: Interaction[]) => void
-  }
 }
 
 export type CreateIndexParams = {
@@ -367,12 +360,12 @@ export class CollectionManager {
     })
   }
 
-  public createAnswerSession(config?: CreateAnswerSessionConfig): AnswerSession {
+  public createAnswerSession(config?: CreateAnswerSessionConfig): OramaCoreStream {
     if (!this.apiKey) {
       throw new Error('Read API key is required to create an answer session')
     }
 
-    return new AnswerSession({
+    return new OramaCoreStream({
       collectionID: this.collectionID,
       common: this.client,
       ...config,
@@ -407,7 +400,7 @@ export class CollectionManager {
       init,
       apiKeyPosition: 'header',
       target: 'writer',
-    });
+    })
 
     return res.hooks || {}
   }
