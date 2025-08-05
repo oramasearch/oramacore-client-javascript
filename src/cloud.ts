@@ -1,8 +1,15 @@
-import type { AnyObject, Maybe, NLPSearchResult, NLPSearchStreamResult, SearchParams, SearchResult } from './lib/types'
-import type { NLPSearchParams } from './collection'
-import type { CreateAISessionConfig, OramaCoreStream } from './stream-manager'
+import type {
+  AnyObject,
+  Maybe,
+  NLPSearchResult,
+  NLPSearchStreamResult,
+  SearchParams,
+  SearchResult,
+} from './lib/types.ts'
+import type { NLPSearchParams } from './collection.ts'
+import type { CreateAISessionConfig, OramaCoreStream } from './stream-manager.ts'
 
-import { CollectionManager } from './collection'
+import { CollectionManager } from './collection.ts'
 
 type OramaCloudSearchParams = Omit<SearchParams, 'indexes'> & { datasources: string[] }
 
@@ -26,7 +33,7 @@ export class OramaCloud {
     })
   }
 
-  async search(params: OramaCloudSearchParams): Promise<SearchResult> {
+  search(params: OramaCloudSearchParams): Promise<SearchResult> {
     const { datasources, ...rest } = params
     return this.client.search({ ...rest, indexes: datasources })
   }
@@ -51,35 +58,37 @@ export class OramaCloud {
   }
 
   get ai() {
+    const client = this.client
     return {
-      async NLPSearch(params: NLPSearchParams): Promise<NLPSearchResult<AnyObject>[]> {
-        return this.client.NLPSearch(params)
+      NLPSearch(params: NLPSearchParams): Promise<NLPSearchResult<AnyObject>[]> {
+        return client.NLPSearch(params)
       },
       NLPSearchStream<R = AnyObject>(params: NLPSearchParams): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
-        return this.client.NLPSearchStream(params)
+        return client.NLPSearchStream(params)
       },
       createAISession(config: CreateAISessionConfig): OramaCoreStream {
-        return this.client.createAISession(config)
+        return client.createAISession(config)
       },
     }
   }
 
   get identity() {
+    const client = this.client
     return {
       getIdentity(): Maybe<string> {
-        return this.client.getIdentity()
+        return client.getIdentity()
       },
       getUserId(): Maybe<string> {
-        return this.client.getUserId()
+        return client.getUserId()
       },
       identify(userId: string): Promise<void> {
-        return this.client.identify(userId)
+        return client.identify(userId)
       },
       alias(alias: string): Promise<void> {
-        return this.client.alias(alias)
+        return client.alias(alias)
       },
-      reset(): Promise<void> {
-        return this.client.reset()
+      reset() {
+        return client.reset()
       },
     }
   }
