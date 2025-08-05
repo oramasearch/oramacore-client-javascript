@@ -12,9 +12,9 @@ import { dedupe } from './index.ts'
 export type AnswerSessionConfig = {
   collectionID: string
   initialMessages?: Message[]
-  events?: CreateAnswerSessionConfig['events']
+  events?: CreateAISessionConfig['events']
   sessionID?: string
-  LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
+  LLMConfig?: CreateAISessionConfig['LLMConfig']
   common: Client
 }
 
@@ -116,7 +116,7 @@ export type LLMConfig = {
   model: string
 }
 
-export type CreateAnswerSessionConfig = {
+export type CreateAISessionConfig = {
   LLMConfig?: LLMConfig
   initialMessages?: Message[]
   events?: {
@@ -130,8 +130,8 @@ export class OramaCoreStream {
   private collectionID: string
   private oramaInterface: Client
   private abortController?: AbortController
-  private events?: CreateAnswerSessionConfig['events']
-  private LLMConfig?: CreateAnswerSessionConfig['LLMConfig']
+  private events?: CreateAISessionConfig['events']
+  private LLMConfig?: CreateAISessionConfig['LLMConfig']
   private sessionID?: string
   private lastInteractionParams?: AnswerConfig
 
@@ -202,7 +202,7 @@ export class OramaCoreStream {
         visitor_id: data.visitorID,
         conversation_id: data.sessionID,
         messages: this.messages.slice(0, -1), // Send conversation history excluding the empty assistant message
-        llm_config: null as Nullable<CreateAnswerSessionConfig['LLMConfig']>,
+        llm_config: null as Nullable<CreateAISessionConfig['LLMConfig']>,
         related: data.related,
         min_similarity: data.min_similarity,
         max_documents: data.max_documents,
