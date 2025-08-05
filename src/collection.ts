@@ -1,5 +1,4 @@
 import { ZodType } from 'npm:zod@3.24.3'
-import type { SSEEvent } from './lib/event-stream.ts'
 
 import type {
   AnyObject,
@@ -30,7 +29,7 @@ import type {
   UpdateToolBody,
   UpdateTriggerResponse,
 } from './index.ts'
-import type { CreateAnswerSessionConfig } from './stream-manager.ts'
+import type { CreateAISessionConfig } from './stream-manager.ts'
 import type { ClientConfig, ClientRequestInit } from './common.ts'
 
 import { Profile } from './profile.ts'
@@ -297,7 +296,7 @@ export class CollectionManager {
     })
   }
 
-  public createAISession(config?: CreateAnswerSessionConfig): OramaCoreStream {
+  public createAISession(config?: CreateAISessionConfig): OramaCoreStream {
     if (!this.apiKey) {
       throw new Error('Read API key is required to create an answer session')
     }
@@ -729,7 +728,7 @@ export class Index {
     this.oramaInterface = oramaInterface
   }
 
-  public async reindex(init?: ClientRequestInit): Promise<void> {
+  public async reindex(init?: ClientRequestInit): Promise<Index> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/reindex`,
       method: 'POST',
@@ -737,9 +736,11 @@ export class Index {
       apiKeyPosition: 'header',
       target: 'writer',
     })
+
+    return this
   }
 
-  public async insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<void> {
+  public async insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<Index> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
       body: Array.isArray(documents) ? documents : [documents],
@@ -748,9 +749,11 @@ export class Index {
       apiKeyPosition: 'header',
       target: 'writer',
     })
+
+    return this
   }
 
-  public async deleteDocuments(documentIDs: string | string[], init?: ClientRequestInit): Promise<void> {
+  public async deleteDocuments(documentIDs: string | string[], init?: ClientRequestInit): Promise<Index> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/delete`,
       body: Array.isArray(documentIDs) ? documentIDs : [documentIDs],
@@ -759,9 +762,11 @@ export class Index {
       apiKeyPosition: 'header',
       target: 'writer',
     })
+
+    return this
   }
 
-  public async upsertDocuments(documents: AnyObject[], init?: ClientRequestInit): Promise<void> {
+  public async upsertDocuments(documents: AnyObject[], init?: ClientRequestInit): Promise<Index> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
       body: documents,
@@ -770,5 +775,7 @@ export class Index {
       apiKeyPosition: 'header',
       target: 'writer',
     })
+
+    return this
   }
 }
