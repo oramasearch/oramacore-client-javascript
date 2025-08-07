@@ -1,5 +1,7 @@
 import type { AnyObject, EmbeddingsModel, Language, Maybe, Nullable } from './lib/types.ts'
-import { Auth, Client, ClientRequestInit } from './common.ts'
+import type { ClientRequestInit } from './common.ts'
+
+import { Auth, Client } from './common.ts'
 import { createRandomString } from './lib/utils.ts'
 
 export type OramaCoreManagerConfig = {
@@ -45,10 +47,10 @@ export type GetCollectionsResponse = {
 }
 
 export class OramaCoreManager {
-  private client: Client
+  public collection: CollectionNamespace
 
   constructor(config: OramaCoreManagerConfig) {
-    this.client = new Client({
+    const client = new Client({
       auth: new Auth({
         type: 'apiKey',
         apiKey: config.masterAPIKey,
@@ -56,9 +58,19 @@ export class OramaCoreManager {
         readerURL: undefined,
       }),
     })
+
+    this.collection = new CollectionNamespace(client)
+  }
+}
+
+class CollectionNamespace {
+  client: Client
+
+  constructor(client: Client) {
+    this.client = client
   }
 
-  public async createCollection(
+  public async create(
     config: CreateCollectionParams,
     init?: ClientRequestInit,
   ): Promise<NewCollectionResponse> {
@@ -90,7 +102,7 @@ export class OramaCoreManager {
     } as NewCollectionResponse
   }
 
-  public listCollections(init?: ClientRequestInit): Promise<GetCollectionsResponse[]> {
+  public list(init?: ClientRequestInit): Promise<GetCollectionsResponse[]> {
     return this.client.request<GetCollectionsResponse[]>({
       path: '/v1/collections',
       method: 'GET',
@@ -100,7 +112,7 @@ export class OramaCoreManager {
     })
   }
 
-  public getCollection(collectionID: string, init?: ClientRequestInit): Promise<GetCollectionsResponse> {
+  public get(collectionID: string, init?: ClientRequestInit): Promise<GetCollectionsResponse> {
     return this.client.request<GetCollectionsResponse>({
       path: `/v1/collections/${collectionID}`,
       method: 'GET',
@@ -110,7 +122,7 @@ export class OramaCoreManager {
     })
   }
 
-  public deleteCollection(collectionID: string, init?: ClientRequestInit): Promise<null> {
+  public delete(collectionID: string, init?: ClientRequestInit): Promise<null> {
     return this.client.request<null>({
       path: `/v1/collections/delete`,
       method: 'POST',

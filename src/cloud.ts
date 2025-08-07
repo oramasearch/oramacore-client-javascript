@@ -1,13 +1,5 @@
-import type {
-  AnyObject,
-  Maybe,
-  NLPSearchResult,
-  NLPSearchStreamResult,
-  SearchParams,
-  SearchResult,
-} from './lib/types.ts'
-import type { NLPSearchParams } from './collection.ts'
-import type { CreateAISessionConfig, OramaCoreStream } from './stream-manager.ts'
+import type { AnyObject, SearchParams, SearchResult } from './lib/types.ts'
+import type { Index } from './collection.ts'
 
 import { CollectionManager } from './collection.ts'
 
@@ -26,11 +18,31 @@ export interface ProjectManagerConfig {
 export class OramaCloud {
   private client: CollectionManager
 
+  // Expose all namespaces from CollectionManager
+  public identity: CollectionManager['identity']
+  public ai: CollectionManager['ai']
+  public collections: CollectionManager['collections']
+  public index: CollectionManager['index']
+  public hooks: CollectionManager['hooks']
+  public logs: CollectionManager['logs']
+  public systemPrompts: CollectionManager['systemPrompts']
+  public tools: CollectionManager['tools']
+
   constructor(config: ProjectManagerConfig) {
     this.client = new CollectionManager({
       ...config,
       collectionID: config.projectId,
     })
+
+    // Delegate to CollectionManager namespaces
+    this.identity = this.client.identity
+    this.ai = this.client.ai
+    this.collections = this.client.collections
+    this.index = this.client.index
+    this.hooks = this.client.hooks
+    this.logs = this.client.logs
+    this.systemPrompts = this.client.systemPrompts
+    this.tools = this.client.tools
   }
 
   search(params: OramaCloudSearchParams): Promise<SearchResult> {
@@ -39,57 +51,31 @@ export class OramaCloud {
   }
 
   dataSource(id: string) {
-    const index = this.client.setIndex(id)
+    const index = this.client.index.set(id)
+    return new DataSourceNamespace(index)
+  }
+}
 
-    return {
-      reindex() {
-        return index.reindex()
-      },
-      insertDocuments(documents: AnyObject | AnyObject[]) {
-        return index.insertDocuments(documents)
-      },
-      deleteDocuments(documentIDs: string | string[]) {
-        return index.deleteDocuments(documentIDs)
-      },
-      upsertDocuments(documents: AnyObject[]) {
-        return index.upsertDocuments(documents)
-      },
-    }
+class DataSourceNamespace {
+  private index: Index
+
+  constructor(index: Index) {
+    this.index = index
   }
 
-  get ai() {
-    const client = this.client
-    return {
-      NLPSearch(params: NLPSearchParams): Promise<NLPSearchResult<AnyObject>[]> {
-        return client.NLPSearch(params)
-      },
-      NLPSearchStream<R = AnyObject>(params: NLPSearchParams): AsyncGenerator<NLPSearchStreamResult<R>, void, unknown> {
-        return client.NLPSearchStream(params)
-      },
-      createAISession(config: CreateAISessionConfig): OramaCoreStream {
-        return client.createAISession(config)
-      },
-    }
+  reindex(): Promise<void> {
+    return this.index.reindex()
   }
 
-  get identity() {
-    const client = this.client
-    return {
-      getIdentity(): Maybe<string> {
-        return client.getIdentity()
-      },
-      getUserId(): Maybe<string> {
-        return client.getUserId()
-      },
-      identify(userId: string): Promise<void> {
-        return client.identify(userId)
-      },
-      alias(alias: string): Promise<void> {
-        return client.alias(alias)
-      },
-      reset() {
-        return client.reset()
-      },
-    }
+  insertDocuments(documents: AnyObject | AnyObject[]): Promise<void> {
+    return this.index.insertDocuments(documents)
+  }
+
+  deleteDocuments(documentIDs: string | string[]): Promise<void> {
+    return this.index.deleteDocuments(documentIDs)
+  }
+
+  upsertDocuments(documents: AnyObject[]): Promise<void> {
+    return this.index.upsertDocuments(documents)
   }
 }
