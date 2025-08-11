@@ -286,3 +286,22 @@ export type NLPSearchStreamResult<R = AnyObject> = {
   status: NLPSearchStreamStatus
   data?: R | R[] | GeneratedQuery[] | SelectedProperties[] | CombinedQueryAndProperties[]
 }
+
+export type TrainingSetQueryOptimizer = {
+  queries: {
+    simple: {
+      query: string
+      optimized: string[]
+    }[]
+    advanced: {
+      query: string
+      optimized: string[]
+    }[]
+    multiple_terms: {
+      query: string
+      optimized: string[]
+    }[]
+  }
+}
+
+export type TrainingSetInsertParameters = TrainingSetQueryOptimizer['queries']

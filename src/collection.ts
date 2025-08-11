@@ -9,6 +9,7 @@ import type {
   Nullable,
   SearchParams,
   SearchResult,
+  TrainingSetInsertParameters,
 } from './lib/types.ts'
 import type {
   ExecuteToolsBody,
@@ -19,6 +20,7 @@ import type {
   SystemPrompt,
   SystemPromptValidationResponse,
   Tool,
+  TrainingSetQueryOptimizer,
   UpdateToolBody,
   UpdateTriggerResponse,
 } from './index.ts'
@@ -69,7 +71,7 @@ export type NLPSearchParams = {
 }
 
 export type LLMConfig = {
-  provider: 'openai' | 'fireworks' | 'together' | 'google'
+  provider: 'openai' | 'fireworks' | 'together' | 'google' | 'groq'
   model: string
 }
 
@@ -108,6 +110,7 @@ export class CollectionManager {
   public systemPrompts: SystemPromptsNamespace
   public tools: ToolsNamespace
   public identity: IdentityNamespace
+  public trainingSets: TrainingSetsNamespace
 
   constructor(config: CollectionManagerConfig) {
     let auth: Auth
@@ -151,6 +154,7 @@ export class CollectionManager {
     this.systemPrompts = new SystemPromptsNamespace(this.client, this.collectionID)
     this.tools = new ToolsNamespace(this.client, this.collectionID)
     this.identity = new IdentityNamespace(this.profile)
+    this.trainingSets = new TrainingSetsNamespace(this.client, this.collectionID)
   }
 
   public async search<R = AnyObject>(query: SearchParams, init?: ClientRequestInit): Promise<SearchResult<R>> {
@@ -706,6 +710,69 @@ class IdentityNamespace {
       throw new Error('Profile is not defined')
     }
     this.profile.reset()
+  }
+}
+
+class TrainingSetsNamespace {
+  private client: Client
+  private collectionID: string
+
+  constructor(client: Client, collectionID: string) {
+    this.client = client
+    this.collectionID = collectionID
+  }
+
+  async get(trainingSetId: string, init?: ClientRequestInit): Promise<{ training_sets: TrainingSetQueryOptimizer }> {
+    const response = await this.client.request<{ training_sets: Nullable<string> }>({
+      path: `/v1/collections/${this.collectionID}/training_sets/${trainingSetId}/get`,
+      method: 'GET',
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
+    })
+
+    const trainingSets = response.training_sets && JSON.parse(response.training_sets)
+    return { training_sets: trainingSets }
+  }
+
+  generate(trainingSetId: string, LLMConfig?: LLMConfig, init?: ClientRequestInit): Promise<TrainingSetQueryOptimizer> {
+    return this.client.request<TrainingSetQueryOptimizer>({
+      path: `/v1/collections/${this.collectionID}/training_sets/${trainingSetId}/generate`,
+      method: 'POST',
+      body: {
+        llm_config: LLMConfig ? { ...LLMConfig } : undefined,
+      },
+      init,
+      apiKeyPosition: 'query-params',
+      target: 'reader',
+    })
+  }
+
+  insert(
+    trainingSetId: string,
+    trainingSet: TrainingSetInsertParameters,
+    init?: ClientRequestInit,
+  ): Promise<{ inserted: true }> {
+    return this.client.request<{ inserted: true }>({
+      path: `/v1/collections/${this.collectionID}/training_sets/${trainingSetId}/insert`,
+      method: 'POST',
+      body: {
+        training_set: trainingSet,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  delete(trainingSetId: string, init?: ClientRequestInit): Promise<{ deleted: true }> {
+    return this.client.request<{ deleted: true }>({
+      path: `/v1/collections/${this.collectionID}/training_sets/${trainingSetId}/delete`,
+      method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
   }
 }
 

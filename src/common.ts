@@ -263,3 +263,7 @@ export function safeJSONParse<T = unknown>(data: string, silent = true): T {
     return data as unknown as T
   }
 }
+
+export type TrainingSet = typeof TRAINING_SETS[number]
+
+export const TRAINING_SETS = ['query_optimizer', 'query_planner', 'query_filtering'] as const
