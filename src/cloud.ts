@@ -1,9 +1,8 @@
 import type { AnyObject, SearchParams, SearchResult } from './lib/types.ts'
 import type { Index } from './collection.ts'
+import type { OramaCloudSearchParams } from './lib/types.ts'
 
 import { CollectionManager } from './collection.ts'
-
-type OramaCloudSearchParams = Omit<SearchParams, 'indexes'> & { datasources: string[] }
 
 export interface ProjectManagerConfig {
   cluster?: {
