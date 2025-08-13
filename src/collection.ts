@@ -799,8 +799,8 @@ export class Index {
 
   public async insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/insert`,
-      body: { documents: Array.isArray(documents) ? documents : [documents] },
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
+      body: Array.isArray(documents) ? documents : [documents],
       method: 'POST',
       init,
       apiKeyPosition: 'header',
@@ -810,8 +810,8 @@ export class Index {
 
   public async deleteDocuments(documentIDs: string | string[], init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/delete`,
-      body: { document_ids: Array.isArray(documentIDs) ? documentIDs : [documentIDs] },
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/delete`,
+      body: Array.isArray(documentIDs) ? documentIDs : [documentIDs],
       method: 'POST',
       init,
       apiKeyPosition: 'header',
@@ -821,8 +821,8 @@ export class Index {
 
   public async upsertDocuments(documents: AnyObject[], init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/upsert`,
-      body: { documents },
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/upsert`,
+      body: documents,
       method: 'POST',
       init,
       apiKeyPosition: 'header',
