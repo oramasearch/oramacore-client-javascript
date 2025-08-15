@@ -30,7 +30,7 @@ import type { ClientConfig, ClientRequestInit } from './common.ts'
 import { Profile } from './profile.ts'
 import { OramaCoreStream } from './stream-manager.ts'
 import { Auth, Client } from './common.ts'
-import { flattenZodSchema, formatDuration } from './lib/utils.ts'
+import { createRandomString, flattenZodSchema, formatDuration } from './lib/utils.ts'
 import { parseNLPQueryStream } from 'npm:@orama/oramacore-events-parser@0.0.5'
 import { dedupe } from './index.ts'
 
@@ -780,11 +780,13 @@ export class Index {
   private indexID: string
   private collectionID: string
   private oramaInterface: Client
+  public transaction: Transaction
 
   constructor(oramaInterface: Client, collectionID: string, indexID: string) {
     this.indexID = indexID
     this.collectionID = collectionID
     this.oramaInterface = oramaInterface
+    this.transaction = new Transaction(oramaInterface, collectionID, indexID)
   }
 
   public async reindex(init?: ClientRequestInit): Promise<void> {
@@ -823,6 +825,68 @@ export class Index {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/upsert`,
       body: documents,
+      method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+}
+
+export class Transaction {
+  private indexID: string
+  private collectionID: string
+  private tempIndexID: string
+  private oramaInterface: Client
+
+  constructor(oramaInterface: Client, collectionID: string, indexID: string, tempIndexID = createRandomString(16)) {
+    this.oramaInterface = oramaInterface
+    this.collectionID = collectionID
+    this.indexID = indexID
+    this.tempIndexID = tempIndexID
+  }
+
+  public open(init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/create-temporary-index`,
+      method: 'POST',
+      body: {
+        id: this.tempIndexID,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.tempIndexID}/insert`,
+      body: Array.isArray(documents) ? documents : [documents],
+      method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public commit(init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/replace-index`,
+      method: 'POST',
+      body: {
+        target_index_id: this.indexID,
+        temp_index_id: this.tempIndexID,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public rollback(init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.tempIndexID}/delete`,
       method: 'POST',
       init,
       apiKeyPosition: 'header',
