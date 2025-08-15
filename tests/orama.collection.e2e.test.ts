@@ -1,6 +1,6 @@
 import { z } from 'npm:zod@3.24.3'
 import { assert, assertEquals, assertFalse, assertNotEquals } from 'jsr:@std/assert'
-import { CollectionManager, OramaCoreManager } from '../src/index.ts'
+import { CollectionManager, OramaCloud, OramaCoreManager } from '../src/index.ts'
 import { createRandomString } from '../src/lib/utils.ts'
 
 const manager = new OramaCoreManager({
@@ -330,4 +330,44 @@ export default { beforeRetrieval };
   assert(/\}/.test(logs[1]))
 
   ev.close()
+})
+
+Deno.test('CollectionManager: can handle transaction', async () => {
+  const newIndexId = createRandomString(32)
+
+  await collectionManager.index.create({
+    id: newIndexId,
+  })
+
+  const index = collectionManager.index.set(newIndexId)
+
+  await index.insertDocuments([
+    { id: '1', name: '123', number: 123 },
+    { id: '2', name: '456', number: 456 },
+  ])
+
+  const docs = await collectionManager.search({
+    term: '',
+    indexes: [newIndexId],
+  })
+
+  const count = docs.count
+
+  assertEquals(count, 2)
+
+  await index.transaction.open()
+  await index.transaction.insertDocuments([
+    { id: '3', name: '789', number: 789 },
+  ])
+  await index.transaction.commit()
+
+  const docsAfter = await collectionManager.search({
+    term: '',
+    indexes: [newIndexId],
+  })
+
+  const countAfter = docsAfter.count
+
+  assertEquals(countAfter, 1)
+  assertEquals(docsAfter.hits[0].document.id, '3')
 })
