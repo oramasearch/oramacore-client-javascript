@@ -7,6 +7,8 @@ import type {
   NLPSearchStreamResult,
   NLPSearchStreamStatus,
   Nullable,
+  PinningRule,
+  PinningRuleInsertObject,
   SearchParams,
   SearchResult,
   TrainingSetInsertParameters,
@@ -431,6 +433,70 @@ class HooksNamespace {
   }
 }
 
+class PinningRulesNamespace {
+  private client: Client
+  private collectionID: string
+  private indexID: string
+
+  constructor(client: Client, collectionID: string, indexID: string) {
+    this.client = client
+    this.collectionID = collectionID
+    this.indexID = indexID
+  }
+
+  public insert(rule: PinningRuleInsertObject): Promise<{ success: boolean }> {
+    if (!rule.id) {
+      rule.id = createRandomString(32)
+    }
+
+    return this.client.request<{ success: true }>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules`,
+      body: rule,
+      method: 'POST',
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public update(rule: PinningRuleInsertObject): Promise<{ success: boolean }> {
+    if (!rule.id) {
+      rule.id = createRandomString(32)
+    }
+
+    return this.insert(rule)
+  }
+
+  public list(): Promise<PinningRule[]> {
+    return this.client.request<PinningRule[]>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules`,
+      method: 'GET',
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public listIDs(): Promise<string[]> {
+    return this.client.request<string[]>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules/ids`,
+      method: 'GET',
+      apiKeyPosition: 'query-params',
+      target: 'reader',
+    })
+  }
+
+  public delete(id: string): Promise<{ success: boolean }> {
+    return this.client.request<{ success: true }>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules/delete`,
+      method: 'POST',
+      body: {
+        id,
+      },
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+}
+
 class LogsNamespace {
   private client: Client
   private collectionID: string
@@ -781,12 +847,14 @@ export class Index {
   private collectionID: string
   private oramaInterface: Client
   public transaction: Transaction
+  public pinningRules: PinningRulesNamespace
 
   constructor(oramaInterface: Client, collectionID: string, indexID: string) {
     this.indexID = indexID
     this.collectionID = collectionID
     this.oramaInterface = oramaInterface
     this.transaction = new Transaction(oramaInterface, collectionID, indexID)
+    this.pinningRules = new PinningRulesNamespace(oramaInterface, collectionID, indexID)
   }
 
   public async reindex(init?: ClientRequestInit): Promise<void> {
@@ -799,7 +867,7 @@ export class Index {
     })
   }
 
-  public async insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<void> {
+  public async insertDocuments<T = AnyObject | AnyObject[]>(documents: T, init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
       body: Array.isArray(documents) ? documents : [documents],
@@ -821,10 +889,10 @@ export class Index {
     })
   }
 
-  public async upsertDocuments(documents: AnyObject[], init?: ClientRequestInit): Promise<void> {
+  public async upsertDocuments<T = AnyObject[]>(documents: T, init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/upsert`,
-      body: documents,
+      body: documents as AnyObject[],
       method: 'POST',
       init,
       apiKeyPosition: 'header',
