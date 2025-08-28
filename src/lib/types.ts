@@ -71,7 +71,7 @@ export type SearchParams = {
   facets?: AnyObject
   indexes?: string[]
   datasourceIDs?: string[]
-  boost: { [key: string]: number }
+  boost?: { [key: string]: number }
   exact?: boolean
   threshold?: number
   tolerance?: number
@@ -306,3 +306,27 @@ export type TrainingSetQueryOptimizer = {
 }
 
 export type TrainingSetInsertParameters = TrainingSetQueryOptimizer['queries']
+
+export type PinningRuleAnchoringType = 'is'
+
+export type PinningRuleCondition = {
+  anchoring: PinningRuleAnchoringType
+  pattern: string
+}
+
+export type PinningRuleConsequencePromote = {
+  doc_id: string
+  position: number
+}
+
+export type PinningRule = {
+  id: string
+  conditions: PinningRuleCondition[]
+  consequence: {
+    promote?: PinningRuleConsequencePromote[]
+  }
+}
+
+export type PinningRuleInsertObject = Omit<PinningRule, 'id'> & {
+  id?: string
+}
