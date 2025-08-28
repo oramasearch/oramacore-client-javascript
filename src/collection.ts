@@ -450,7 +450,7 @@ class PinningRulesNamespace {
     }
 
     return this.client.request<{ success: true }>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules`,
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/insert`,
       body: rule,
       method: 'POST',
       apiKeyPosition: 'header',
@@ -466,18 +466,20 @@ class PinningRulesNamespace {
     return this.insert(rule)
   }
 
-  public list(): Promise<PinningRule[]> {
-    return this.client.request<PinningRule[]>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules`,
+  public async list(): Promise<PinningRule[]> {
+    const results = await this.client.request<{ data: PinningRule[] }>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/list`,
       method: 'GET',
       apiKeyPosition: 'header',
       target: 'writer',
     })
+
+    return results.data
   }
 
   public listIDs(): Promise<string[]> {
     return this.client.request<string[]>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules/ids`,
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/ids`,
       method: 'GET',
       apiKeyPosition: 'query-params',
       target: 'reader',
@@ -486,10 +488,10 @@ class PinningRulesNamespace {
 
   public delete(id: string): Promise<{ success: boolean }> {
     return this.client.request<{ success: true }>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin-rules/delete`,
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/delete`,
       method: 'POST',
       body: {
-        id,
+        pin_rule_id_to_delete: id,
       },
       apiKeyPosition: 'header',
       target: 'writer',

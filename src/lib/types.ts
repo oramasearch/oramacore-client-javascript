@@ -71,7 +71,7 @@ export type SearchParams = {
   facets?: AnyObject
   indexes?: string[]
   datasourceIDs?: string[]
-  boost: { [key: string]: number }
+  boost?: { [key: string]: number }
   exact?: boolean
   threshold?: number
   tolerance?: number

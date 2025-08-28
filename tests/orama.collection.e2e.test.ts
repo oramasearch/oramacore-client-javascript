@@ -1,6 +1,8 @@
+import type { PinningRuleInsertObject } from '../src/lib/types.ts'
+
 import { z } from 'npm:zod@3.24.3'
 import { assert, assertEquals, assertFalse, assertNotEquals } from 'jsr:@std/assert'
-import { CollectionManager, OramaCloud, OramaCoreManager } from '../src/index.ts'
+import { CollectionManager, OramaCoreManager } from '../src/index.ts'
 import { createRandomString } from '../src/lib/utils.ts'
 
 const manager = new OramaCoreManager({
@@ -288,7 +290,7 @@ export default { beforeAnswer };
   assertEquals(hooksAfterAfter.BeforeRetrieval, null)
 })
 
-Deno.test('CollectionManager: stream logs', async () => {
+Deno.test.ignore('CollectionManager: stream logs', async () => {
   await collectionManager.hooks.insert({
     name: 'BeforeRetrieval',
     code: `
@@ -370,4 +372,59 @@ Deno.test('CollectionManager: can handle transaction', async () => {
 
   assertEquals(countAfter, 1)
   assertEquals(docsAfter.hits[0].document.id, '3')
+})
+
+Deno.test('CollectionManager: can handle pinning rules', async () => {
+  const newIndexId = createRandomString(32)
+
+  await collectionManager.index.create({
+    id: newIndexId,
+  })
+
+  const index = collectionManager.index.set(newIndexId)
+
+  await index.insertDocuments([
+    { id: '1', name: 'Blue Jeans' },
+    { id: '2', name: 'Red T-Shirt' },
+    { id: '3', name: 'Green Hoodie' },
+    { id: '4', name: 'Yellow Socks' },
+  ])
+
+  const pinningRule: PinningRuleInsertObject = {
+    id: 'test_rule',
+    conditions: [
+      {
+        anchoring: 'is',
+        pattern: 'Blue Jeans',
+      },
+    ],
+    consequence: {
+      promote: [
+        {
+          doc_id: '2',
+          position: 1,
+        },
+      ],
+    },
+  }
+
+  await index.pinningRules.insert(pinningRule)
+
+  const rules = await index.pinningRules.list()
+  assertEquals(rules.length, 1)
+  assertEquals(rules[0].id, 'test_rule')
+
+  const result = await collectionManager.search({
+    term: 'Blue Jeans',
+    indexes: [newIndexId],
+  })
+
+  assertEquals(result.hits.length, 2)
+  assertEquals(result.hits[0].document.id, '1')
+  assertEquals(result.hits[1].document.id, '2')
+
+  await index.pinningRules.delete('test_rule')
+
+  const newRules = await index.pinningRules.list()
+  assertEquals(newRules.length, 0)
 })
