@@ -78,7 +78,7 @@ export type SearchParams = {
   userID?: string
 }
 
-export type CloudSearchParams = Omit<SearchParams, 'indexes'> & { datasourceIDs?: string[] }
+export type OramaCloudSearchParams = Omit<SearchParams, 'indexes'> & { datasources?: string[] }
 
 export type Hit<T = AnyObject> = {
   id: string
