@@ -51,6 +51,8 @@ export type EmbeddingsModel =
   | 'BGESmall'
   | 'BGEBase'
   | 'BGELarge'
+  | 'MultilingualMiniLML12V2'
+  | 'JnaEmbeddingsV2BaseCode'
 
 export type EmbeddingsConfig = {
   model: Nullable<EmbeddingsModel>
