@@ -3,7 +3,7 @@ import type { Index } from './collection.ts'
 
 import { CollectionManager } from './collection.ts'
 
-type OramaCloudSearchParams = Omit<SearchParams, 'indexes'> & { datasources: string[] }
+export type OramaCloudSearchParams = Omit<SearchParams, 'indexes'> & { datasources: string[] }
 
 export interface ProjectManagerConfig {
   cluster?: {
