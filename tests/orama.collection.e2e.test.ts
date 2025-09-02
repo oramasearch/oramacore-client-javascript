@@ -429,7 +429,7 @@ Deno.test('CollectionManager: can handle pinning rules', async () => {
   assertEquals(newRules.length, 0)
 })
 
-Deno.test.only('CollectionManager: can handle grouping', async () => {
+Deno.test('CollectionManager: can handle grouping', async () => {
   const newIndexId = createRandomString(32)
 
   await collectionManager.index.create({
