@@ -76,6 +76,7 @@ export type SearchParams = {
   threshold?: number
   tolerance?: number
   userID?: string
+  groupBy?: { properties: string[]; max_results?: number }
 }
 
 export type CloudSearchParams = Omit<SearchParams, 'indexes'> & { datasourceIDs?: string[] }
@@ -91,6 +92,10 @@ export type SearchResult<T = AnyObject> = {
   count: number
   hits: Hit<T>[]
   facets?: AnyObject
+  groups?: {
+    values: string[]
+    result: Hit<T>[]
+  }[]
   elapsed: {
     raw: number
     formatted: string

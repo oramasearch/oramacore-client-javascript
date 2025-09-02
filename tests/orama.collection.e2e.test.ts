@@ -428,3 +428,40 @@ Deno.test('CollectionManager: can handle pinning rules', async () => {
   const newRules = await index.pinningRules.list()
   assertEquals(newRules.length, 0)
 })
+
+Deno.test.only('CollectionManager: can handle grouping', async () => {
+  const newIndexId = createRandomString(32)
+
+  await collectionManager.index.create({
+    id: newIndexId,
+  })
+
+  const index = collectionManager.index.set(newIndexId)
+
+  await index.insertDocuments([
+    { id: '1', name: 'White t-shirt', tag: 'clothing' },
+    { id: '2', name: 'Red and white t-shirt', tag: 'clothing' },
+    { id: '3', name: 'Green t-shirt', tag: 'clothing' },
+    { id: '4', name: 'Yellow socks', tag: 'clothing' },
+    { id: '5', name: 'White shoes', tag: 'shoes' },
+    { id: '6', name: 'White glasses', tag: 'accessories' },
+    { id: '7', name: 'White rings', tag: 'accessories' },
+  ])
+
+  const result = await collectionManager.search({
+    term: 'white',
+    groupBy: {
+      properties: ['tag'],
+      max_results: 5,
+    },
+  })
+
+  const shoesGroup = result.groups?.find((group) => group.values.includes('shoes'))
+  const accessoriesGroup = result.groups?.find((group) => group.values.includes('accessories'))
+  const clothingGroup = result.groups?.find((group) => group.values.includes('clothing'))
+
+  assertEquals(result.groups!.length, 3)
+  assertEquals(shoesGroup?.result.length, 1)
+  assertEquals(accessoriesGroup?.result.length, 2)
+  assertEquals(clothingGroup?.result.length, 2)
+})
