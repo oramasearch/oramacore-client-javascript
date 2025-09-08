@@ -200,18 +200,53 @@ class AINamespace {
     this.profile = profile
   }
 
-  public NLPSearch<R = AnyObject>(params: NLPSearchParams, init?: ClientRequestInit): Promise<NLPSearchResult<R>[]> {
-    return this.client.request({
+  public async NLPSearch<R = AnyObject>(params: NLPSearchParams, init?: ClientRequestInit): Promise<NLPSearchResult<R>[]> {
+    const body = {
+      llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
+      userID: this.profile?.getUserId() || undefined,
+      messages: [
+        {
+          role: 'user',
+          content: params.query,
+        },
+      ],
+    }
+
+    const response = await this.client.getResponse({
       method: 'POST',
-      path: `/v1/collections/${this.collectionID}/nlp_search`,
-      body: {
-        userID: this.profile?.getUserId() || undefined,
-        ...params,
-      },
+      path: `/v1/collections/${this.collectionID}/generate/nlp_query`,
+      body: body,
       init,
       apiKeyPosition: 'query-params',
       target: 'reader',
     })
+
+    if (!response.body) {
+      throw new Error('No response body')
+    }
+
+    const emitter = parseNLPQueryStream(response.body)
+
+    let finished = false
+    let results: NLPSearchResult<R>[] = []
+
+    emitter.on('search_results', (event: NLPStreamSearchResultsEvent) => {
+      results = event.results
+      finished = true
+    })
+
+    emitter.on('error', (e: NLPStreamErrorEvent) => {
+      if (e.is_terminal) {
+        finished = true
+      }
+      throw new Error(e.error)
+    })
+
+    while (!finished) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+
+    return results
   }
 
   public async *NLPSearchStream<R = AnyObject>(

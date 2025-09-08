@@ -123,9 +123,7 @@ export class Client {
         text = `Unable to got response body ${e}`
       }
       throw new Error(
-        `Request to "${req.path}?${
-          new URLSearchParams(req.params ?? {}).toString()
-        }" failed with status ${response.status}: ${text}`,
+        `Request to "${req.path}?${new URLSearchParams(req.params ?? {}).toString()}" failed with status ${response.status}: ${text}`,
       )
     }
 

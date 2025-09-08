@@ -8,7 +8,7 @@
     "test": "deno test tests --allow-env --allow-read --allow-net"
   },
   "fmt": {
-    "lineWidth": 120,
+    "lineWidth": 140,
     "semiColons": false,
     "singleQuote": true,
     "include": [
