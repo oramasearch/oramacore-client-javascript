@@ -1,6 +1,6 @@
 {
   "name": "@orama/core",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "exports": "./src/index.ts",
   "nodeModulesDir": "auto",
   "tasks": {

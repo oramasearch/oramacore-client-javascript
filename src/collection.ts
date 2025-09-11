@@ -2,6 +2,7 @@ import { ZodType } from 'npm:zod@3.24.3'
 
 import type {
   AnyObject,
+  CollectionStats,
   Hook,
   NLPSearchResult,
   NLPSearchStreamResult,
@@ -113,6 +114,7 @@ export class CollectionManager {
   public tools: ToolsNamespace
   public identity: IdentityNamespace
   public trainingSets: TrainingSetsNamespace
+  public mcp: MCPNamespace
 
   constructor(config: CollectionManagerConfig) {
     let auth: Auth
@@ -157,6 +159,7 @@ export class CollectionManager {
     this.tools = new ToolsNamespace(this.client, this.collectionID)
     this.identity = new IdentityNamespace(this.profile)
     this.trainingSets = new TrainingSetsNamespace(this.client, this.collectionID)
+    this.mcp = new MCPNamespace(this.client, this.collectionID)
   }
 
   public async search<R = AnyObject>(query: SearchParams, init?: ClientRequestInit): Promise<SearchResult<R>> {
@@ -343,8 +346,8 @@ class CollectionsNamespace {
     this.collectionID = collectionID
   }
 
-  public getStats(collectionID: string, init?: ClientRequestInit): Promise<AnyObject> {
-    return this.client.request<AnyObject>({
+  public getStats(collectionID: string, init?: ClientRequestInit): Promise<CollectionStats> {
+    return this.client.request<CollectionStats>({
       path: `/v1/collections/${collectionID}/stats`,
       method: 'GET',
       init,
@@ -996,6 +999,29 @@ export class Transaction {
       init,
       apiKeyPosition: 'header',
       target: 'writer',
+    })
+  }
+}
+
+export class MCPNamespace {
+  private client: Client
+  private collectionID: string
+
+  constructor(client: Client, collectionID: string) {
+    this.client = client
+    this.collectionID = collectionID
+  }
+
+  public updateDescription(newDescription: string, init?: ClientRequestInit): Promise<void> {
+    return this.client.request<void>({
+      method: 'PUT',
+      target: 'writer',
+      apiKeyPosition: 'header',
+      init,
+      path: `/v1/collections/${this.collectionID}/mcp/update`,
+      body: {
+        mcp_description: newDescription
+      }
     })
   }
 }

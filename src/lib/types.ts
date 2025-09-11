@@ -335,3 +335,33 @@ export type PinningRule = {
 export type PinningRuleInsertObject = Omit<PinningRule, 'id'> & {
   id?: string
 }
+
+export type FieldStats = {
+  document_count: number
+  field_id: number
+  field_path: string
+  type: string
+  keys?: Nullable<string[]>
+  keys_count?: number
+}
+
+export type IndexesStats = {
+  id: string
+  created_at: string
+  updated_at: string
+  default_locale: string
+  document_count: number
+  fields_stats: FieldStats[]
+  is_temp: boolean
+}
+
+export type CollectionStats = {
+  created_at: string
+  default_locale: string
+  description: string
+  mcp_description: Nullable<string>
+  document_count: number
+  embedding_model: string
+  hooks: Hook[]
+  indexes_stats: IndexesStats[]
+}

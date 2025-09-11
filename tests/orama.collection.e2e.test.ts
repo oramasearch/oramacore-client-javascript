@@ -465,3 +465,22 @@ Deno.test('CollectionManager: can handle grouping', async () => {
   assertEquals(accessoriesGroup?.result.length, 2)
   assertEquals(clothingGroup?.result.length, 2)
 })
+
+Deno.test('CollectionManager: can update the MCP description', async () => {
+  const stats = await collectionManager.collections.getStats(id)
+  const oldDescription = stats.mcp_description || ''
+
+  const newDescription = oldDescription + 'Updated Once'
+
+  await collectionManager.mcp.updateDescription(newDescription)
+
+  const updatedStats = await collectionManager.collections.getStats(id)
+  assertEquals(updatedStats.mcp_description, newDescription)
+
+  const finalDescription = oldDescription + 'Updated Twice'
+
+  await collectionManager.mcp.updateDescription(finalDescription)
+
+  const finalStats = await collectionManager.collections.getStats(id)
+  assertEquals(finalStats.mcp_description, finalDescription)
+})

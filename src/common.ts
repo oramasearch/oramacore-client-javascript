@@ -93,7 +93,7 @@ export class Auth {
 
 export type ClientRequest = {
   target: 'reader' | 'writer'
-  method: 'GET' | 'POST'
+  method: 'GET' | 'POST' | 'PUT'
   path: string
   body?: object
   params?: Record<string, string>
@@ -199,15 +199,16 @@ export class Client {
       ...init,
     }
 
-    if (body && method === 'POST') {
+    if (body && (method === 'POST' || method === 'PUT')) {
       requestObject.body = JSON.stringify(body)
     }
 
     if (params) {
       remoteURL.search = new URLSearchParams(params).toString()
     }
-
+    
     const response = await fetch(remoteURL, requestObject)
+
     if (response.status === 401) {
       throw new Error(
         `Unauthorized: are you using the correct Api Key?`,
