@@ -73,6 +73,7 @@ export type SearchParams = {
   datasourceIDs?: string[]
   boost?: { [key: string]: number }
   exact?: boolean
+  threshold?: number
   similarity?: number
   tolerance?: number
   userID?: string
