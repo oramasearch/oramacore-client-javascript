@@ -51,6 +51,8 @@ export type EmbeddingsModel =
   | 'BGESmall'
   | 'BGEBase'
   | 'BGELarge'
+  | 'MultilingualMiniLML12V2'
+  | 'JnaEmbeddingsV2BaseCode'
 
 export type EmbeddingsConfig = {
   model: Nullable<EmbeddingsModel>
@@ -74,6 +76,7 @@ export type SearchParams = {
   boost?: { [key: string]: number }
   exact?: boolean
   threshold?: number
+  similarity?: number
   tolerance?: number
   userID?: string
   groupBy?: { properties: string[]; max_results?: number }
