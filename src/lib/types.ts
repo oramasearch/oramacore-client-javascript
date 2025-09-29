@@ -345,6 +345,10 @@ export type FieldStats = {
   keys_count?: number
 }
 
+export type ImplicitEnumTypeStrategy = { StringLength: number }
+export type ExplicitEnumTypeStrategy = 'Explicit'
+export type EnumTypeStrategy = ImplicitEnumTypeStrategy | ExplicitEnumTypeStrategy
+
 export type IndexesStats = {
   id: string
   created_at: string
@@ -353,6 +357,9 @@ export type IndexesStats = {
   document_count: number
   fields_stats: FieldStats[]
   is_temp: boolean
+  type_parsing_strategies: {
+    enum_strategy?: EnumTypeStrategy
+  }
 }
 
 export type CollectionStats = {

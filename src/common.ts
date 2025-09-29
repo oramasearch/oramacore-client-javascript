@@ -206,7 +206,7 @@ export class Client {
     if (params) {
       remoteURL.search = new URLSearchParams(params).toString()
     }
-    
+
     const response = await fetch(remoteURL, requestObject)
 
     if (response.status === 401) {

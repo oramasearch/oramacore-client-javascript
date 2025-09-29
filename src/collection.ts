@@ -78,9 +78,18 @@ export type LLMConfig = {
   model: string
 }
 
+export type EnumStrategyStringLength = `string(${number})`
+
+export type EnumStrategy = 'explicit' | EnumStrategyStringLength
+
+export type TypeStrategy = {
+  enum?: EnumStrategy
+}
+
 export type CreateIndexParams = {
   id?: string
   embeddings?: 'automatic' | 'all_properties' | string[]
+  typeStrategy?: TypeStrategy
 }
 
 const DEFAULT_READER_URL = 'https://collections.orama.com'
@@ -381,6 +390,28 @@ class IndexNamespace {
     const body: AnyObject = {
       id: config.id,
       embedding: config.embeddings,
+    }
+
+    if (config?.typeStrategy?.enum) {
+      const enumStrategy = config.typeStrategy.enum
+
+      if (enumStrategy === 'explicit') {
+        body.type_strategy = {
+          enum_strategy: 'Explicit',
+        }
+      } else {
+        const match = enumStrategy.match(/^string\((\d+)\)$/)
+        if (match) {
+          const length = parseInt(match[1], 10)
+          body.type_strategy = {
+            enum_strategy: {
+              StringLength: length,
+            },
+          }
+        } else {
+          throw new Error('Invalid enum strategy format. Use "explicit" or "string(N)" where N is a number.')
+        }
+      }
     }
 
     await this.client.request<void>({
@@ -1020,8 +1051,8 @@ export class MCPNamespace {
       init,
       path: `/v1/collections/${this.collectionID}/mcp/update`,
       body: {
-        mcp_description: newDescription
-      }
+        mcp_description: newDescription,
+      },
     })
   }
 }

@@ -1,4 +1,4 @@
-import type { PinningRuleInsertObject } from '../src/lib/types.ts'
+import type { ImplicitEnumTypeStrategy, PinningRuleInsertObject } from '../src/lib/types.ts'
 
 import { z } from 'npm:zod@3.24.3'
 import { assert, assertEquals, assertFalse, assertNotEquals } from 'jsr:@std/assert'
@@ -34,6 +34,34 @@ Deno.test('CollectionManager: create an index', async () => {
   await collectionManager.index.create({
     id: indexID,
   })
+})
+
+Deno.test('CollectionManager: create an index with explicit type strategy', async () => {
+  await collectionManager.index.create({
+    id: indexID,
+    typeStrategy: {
+      enum: 'explicit',
+    },
+  })
+
+  const stats = await collectionManager.collections.getStats(id)
+
+  assertEquals(stats.indexes_stats[0].type_parsing_strategies?.enum_strategy, 'Explicit')
+})
+
+Deno.test('CollectionManager: create an index with implicit type strategy', async () => {
+  await collectionManager.index.create({
+    id: indexID + '2',
+    typeStrategy: {
+      enum: 'string(50)',
+    },
+  })
+
+  const stats = await collectionManager.collections.getStats(id)
+  const strategy = stats.indexes_stats[1].type_parsing_strategies?.enum_strategy as ImplicitEnumTypeStrategy
+
+  assertEquals(strategy.StringLength, 50)
+  assertNotEquals(stats.indexes_stats[1].type_parsing_strategies?.enum_strategy, 'Explicit')
 })
 
 Deno.test('CollectionManager: insert multiple documents', async () => {
