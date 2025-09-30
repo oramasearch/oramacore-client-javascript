@@ -963,7 +963,10 @@ export class Index {
   public async upsertDocuments<T = AnyObject[]>(documents: T, init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/upsert`,
-      body: documents as AnyObject[],
+      body: {
+        strategy: "merge",
+        documents: documents as AnyObject[]
+      },
       method: 'POST',
       init,
       apiKeyPosition: 'header',
