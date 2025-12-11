@@ -64,6 +64,7 @@ interface NLPStreamStateChangedEvent {
 
 interface NLPStreamSearchResultsEvent {
   type: 'search_results'
+  // deno-lint-ignore no-explicit-any
   results: any[]
 }
 
@@ -474,7 +475,7 @@ class HooksNamespace {
     }
   }
 
-  public async list(init?: ClientRequestInit) {
+  public async list(init?: ClientRequestInit): Promise<Record<Hook, string | null>> {
     const res = await this.client.request<{ hooks: Record<Hook, string | null> }>({
       path: `/v1/collections/${this.collectionID}/hooks/list`,
       method: 'GET',
@@ -577,7 +578,7 @@ class LogsNamespace {
     this.collectionID = collectionID
   }
 
-  public stream(init?: ClientRequestInit) {
+  public stream(init?: ClientRequestInit): Promise<EventSource> {
     return this.client.eventSource({
       path: `/v1/collections/${this.collectionID}/logs`,
       method: 'GET',
@@ -678,7 +679,7 @@ class ToolsNamespace {
     this.collectionID = collectionID
   }
 
-  public insert(tool: InsertToolBody, init?: ClientRequestInit) {
+  public insert(tool: InsertToolBody, init?: ClientRequestInit): Promise<void> {
     let parameters: string
 
     switch (true) {
@@ -928,7 +929,7 @@ export class Index {
     this.pinningRules = new PinningRulesNamespace(oramaInterface, collectionID, indexID)
   }
 
-  public getIndexID() {
+  public getIndexID(): string {
     return this.indexID
   }
 
@@ -968,8 +969,8 @@ export class Index {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/upsert`,
       body: {
-        strategy: "merge",
-        documents: documents as AnyObject[]
+        strategy: 'merge',
+        documents: documents as AnyObject[],
       },
       method: 'POST',
       init,
@@ -980,8 +981,8 @@ export class Index {
 
   public async createTemporaryIndex(
     temp_index_id?: string,
-    init?: ClientRequestInit
-  ) {
+    init?: ClientRequestInit,
+  ): Promise<string> {
     const new_temp_index_id = temp_index_id ?? `temp_${createRandomString(32)}`
 
     await this.oramaInterface.request<void>({
@@ -1023,7 +1024,7 @@ export class Transaction {
   private tempIndexID: string
   private oramaInterface: Client
 
-  constructor(oramaInterface: Client, collectionID: string, indexID: string, tempIndexID = createRandomString(16)) {
+  constructor(oramaInterface: Client, collectionID: string, indexID: string, tempIndexID: string = createRandomString(16)) {
     this.oramaInterface = oramaInterface
     this.collectionID = collectionID
     this.indexID = indexID

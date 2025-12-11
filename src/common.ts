@@ -140,7 +140,7 @@ export class Client {
     return response.body?.pipeThrough(new EventsStreamTransformer())
   }
 
-  public async eventSource(req: ClientRequest) {
+  public async eventSource(req: ClientRequest): Promise<EventSource> {
     if (req.apiKeyPosition !== 'query-params') {
       throw new Error(
         `EventSource only supports apiKeyPosition as 'query-params', but got ${req.apiKeyPosition}`,

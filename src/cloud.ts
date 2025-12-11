@@ -50,7 +50,7 @@ export class OramaCloud {
     return this.client.search({ ...rest, indexes: datasources })
   }
 
-  dataSource(id: string) {
+  dataSource(id: string): DataSourceNamespace {
     const index = this.client.index.set(id)
     return new DataSourceNamespace(
       index,
@@ -66,7 +66,7 @@ class DataSourceNamespace {
   constructor(
     index: Index,
     private client: CollectionManager,
-    private originalRuntimeIndexId?: string
+    private originalRuntimeIndexId?: string,
   ) {
     this.index = index
   }
@@ -108,7 +108,7 @@ class DataSourceNamespace {
     if (!this.originalRuntimeIndexId) {
       throw new Error('Cannot swap a non-temporary index')
     }
-    const tempIndexId = this.index.getIndexID();
+    const tempIndexId = this.index.getIndexID()
 
     if (tempIndexId === this.originalRuntimeIndexId) {
       throw new Error('Cannot swap the same index')

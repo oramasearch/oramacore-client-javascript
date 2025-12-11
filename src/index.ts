@@ -9,7 +9,9 @@ export * from './manager.ts'
 export * from './collection.ts'
 export * from './cloud.ts'
 
-export const dedupe = (() => {
+type DedupeFunction = (message: string | undefined) => string
+
+export const dedupe: DedupeFunction = (() => {
   const seenMessages = new Set<string>()
 
   return function (message: string | undefined): string {

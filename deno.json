@@ -21,5 +21,11 @@
       "deno.window",
       "dom"
     ]
+  },
+  "lint": {
+    "include": ["src/"],
+    "rules": {
+      "exclude": ["no-import-prefix", "no-explicit-any", "no-process-global"]
+    }
   }
 }
