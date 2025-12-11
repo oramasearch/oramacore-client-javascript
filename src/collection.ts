@@ -928,6 +928,10 @@ export class Index {
     this.pinningRules = new PinningRulesNamespace(oramaInterface, collectionID, indexID)
   }
 
+  public getIndexID() {
+    return this.indexID
+  }
+
   public async reindex(init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/reindex`,
@@ -968,6 +972,44 @@ export class Index {
         documents: documents as AnyObject[]
       },
       method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public async createTemporaryIndex(
+    temp_index_id?: string,
+    init?: ClientRequestInit
+  ) {
+    const new_temp_index_id = temp_index_id ?? `temp_${createRandomString(32)}`
+
+    await this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/create-temporary-index`,
+      method: 'POST',
+      body: {
+        id: new_temp_index_id,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+
+    return new_temp_index_id
+  }
+
+  public async swapTemporaryIndex(
+    target_index_id: string,
+    temp_index_id: string,
+    init?: ClientRequestInit,
+  ) {
+    await this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/replace-index`,
+      method: 'POST',
+      body: {
+        target_index_id,
+        temp_index_id,
+      },
       init,
       apiKeyPosition: 'header',
       target: 'writer',
