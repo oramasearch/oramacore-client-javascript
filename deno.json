@@ -1,6 +1,6 @@
 {
   "name": "@orama/core",
-  "version": "1.2.14",
+  "version": "1.2.15",
   "exports": "./src/index.ts",
   "nodeModulesDir": "auto",
   "tasks": {
@@ -23,9 +23,15 @@
     ]
   },
   "lint": {
-    "include": ["src/"],
+    "include": [
+      "src/"
+    ],
     "rules": {
-      "exclude": ["no-import-prefix", "no-explicit-any", "no-process-global"]
+      "exclude": [
+        "no-import-prefix",
+        "no-explicit-any",
+        "no-process-global"
+      ]
     }
   }
 }

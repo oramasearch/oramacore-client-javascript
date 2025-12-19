@@ -25,3 +25,5 @@ On browsers:
 ## License
 
 [AGPLv3](/LICENSE.md)
+
+<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=83013fff-5997-4abd-9a5c-8163b59fa6e2" />
