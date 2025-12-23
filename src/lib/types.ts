@@ -63,6 +63,8 @@ export type Hook = 'BeforeAnswer' | 'BeforeRetrieval'
 
 export type SearchMode = 'fulltext' | 'vector' | 'hybrid' | 'auto'
 
+export type GroupsSortBy = 'default' | 'score'
+
 export type SearchParams = {
   term: string
   mode?: SearchMode
@@ -79,7 +81,7 @@ export type SearchParams = {
   similarity?: number
   tolerance?: number
   userID?: string
-  groupBy?: { properties: string[]; max_results?: number }
+  groupBy?: { properties: string[]; max_results?: number; sortBy?: GroupsSortBy }
 }
 
 export type CloudSearchParams = Omit<SearchParams, 'indexes'> & { datasourceIDs?: string[] }

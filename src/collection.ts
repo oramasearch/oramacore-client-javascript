@@ -174,7 +174,13 @@ export class CollectionManager {
 
   public async search<R = AnyObject>(query: SearchParams, init?: ClientRequestInit): Promise<SearchResult<R>> {
     const start = Date.now()
-    const { datasourceIDs, indexes, ...restQuery } = query
+    const { datasourceIDs, indexes, groupBy, ...restQuery } = query
+
+    // Extract sortBy from groupBy (client-side only, not sent to backend)
+    const groupsSortBy = groupBy?.sortBy
+    const groupByForApi = groupBy
+      ? { properties: groupBy.properties, max_results: groupBy.max_results }
+      : undefined
 
     const result = await this.client.request<Omit<SearchResult<R>, 'elapsed'>>({
       path: `/v1/collections/${this.collectionID}/search`,
@@ -182,6 +188,7 @@ export class CollectionManager {
         userID: this.profile?.getUserId() || undefined,
         ...restQuery, // restQuery can override `userID`
         indexes: datasourceIDs || indexes,
+        groupBy: groupByForApi,
       },
       method: 'POST',
       params: undefined,
@@ -189,6 +196,15 @@ export class CollectionManager {
       apiKeyPosition: 'query-params',
       target: 'reader',
     })
+
+    // Sort groups by score of first element if requested
+    if (groupsSortBy === 'score' && result.groups) {
+      result.groups.sort((a, b) => {
+        const scoreA = a.result[0]?.score ?? 0
+        const scoreB = b.result[0]?.score ?? 0
+        return scoreB - scoreA // Descending order
+      })
+    }
 
     const elapsed = Date.now() - start
 
