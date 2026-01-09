@@ -178,9 +178,7 @@ export class CollectionManager {
 
     // Extract sortBy from groupBy (client-side only, not sent to backend)
     const groupsSortBy = groupBy?.sortBy
-    const groupByForApi = groupBy
-      ? { properties: groupBy.properties, max_results: groupBy.max_results }
-      : undefined
+    const groupByForApi = groupBy ? { properties: groupBy.properties, max_results: groupBy.max_results } : undefined
 
     const result = await this.client.request<Omit<SearchResult<R>, 'elapsed'>>({
       path: `/v1/collections/${this.collectionID}/search`,
