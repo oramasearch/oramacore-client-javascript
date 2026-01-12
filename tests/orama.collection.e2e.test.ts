@@ -437,9 +437,9 @@ Deno.test('CollectionManager: can handle pinning rules', async () => {
     },
   }
 
-  await index.pinningRules.insert(pinningRule)
+  await collectionManager.pinningRules.insert(pinningRule)
 
-  const rules = await index.pinningRules.list()
+  const rules = await collectionManager.pinningRules.list()
   assertEquals(rules.length, 1)
   assertEquals(rules[0].id, 'test_rule')
 
@@ -452,9 +452,9 @@ Deno.test('CollectionManager: can handle pinning rules', async () => {
   assertEquals(result.hits[0].document.id, '1')
   assertEquals(result.hits[1].document.id, '2')
 
-  await index.pinningRules.delete('test_rule')
+  await collectionManager.pinningRules.delete('test_rule')
 
-  const newRules = await index.pinningRules.list()
+  const newRules = await collectionManager.pinningRules.list()
   assertEquals(newRules.length, 0)
 })
 
