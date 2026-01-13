@@ -1,4 +1,4 @@
-import type { ZodType } from 'npm:zod@3.24.3'
+
 
 import type { Message } from '../stream-manager.ts'
 import type { LLMConfig } from '../collection.ts'
@@ -196,7 +196,7 @@ export type Tool = {
 export type InsertToolBody = {
   id: string
   description: string
-  parameters: string | AnyObject | ZodType
+  parameters: string | AnyObject
   code?: string
   system_prompt?: string
 }
@@ -204,7 +204,7 @@ export type InsertToolBody = {
 export type UpdateToolBody = {
   id: string
   description?: string
-  parameters?: string | AnyObject | ZodType
+  parameters?: string | AnyObject
   code?: string
 }
 
