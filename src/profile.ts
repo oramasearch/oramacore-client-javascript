@@ -59,15 +59,15 @@ export class Profile {
     }
   }
 
-  getIdentity() {
+  getIdentity(): string | undefined {
     return this.identity
   }
 
-  getUserId() {
+  getUserId(): string {
     return this.userId
   }
 
-  getAlias() {
+  getAlias(): string | undefined {
     return this.userAlias
   }
 

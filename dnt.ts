@@ -32,6 +32,9 @@ await build({
     bugs: {
       url: 'https://github.com/oramasearch/oramacore/repo/issues',
     },
+    devDependencies: {
+      "@scarf/scarf": "1.4.0"
+    }
   },
   testPattern: '**/*.test.{ts,js}',
   rootTestDir: './tests',

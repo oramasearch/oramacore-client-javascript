@@ -2,11 +2,14 @@ import { ZodType } from 'npm:zod@3.24.3'
 
 import type {
   AnyObject,
+  CollectionStats,
   Hook,
   NLPSearchResult,
   NLPSearchStreamResult,
   NLPSearchStreamStatus,
   Nullable,
+  PinningRule,
+  PinningRuleInsertObject,
   SearchParams,
   SearchResult,
   TrainingSetInsertParameters,
@@ -30,7 +33,7 @@ import type { ClientConfig, ClientRequestInit } from './common.ts'
 import { Profile } from './profile.ts'
 import { OramaCoreStream } from './stream-manager.ts'
 import { Auth, Client } from './common.ts'
-import { flattenZodSchema, formatDuration } from './lib/utils.ts'
+import { createRandomString, flattenZodSchema, formatDuration } from './lib/utils.ts'
 import { parseNLPQueryStream } from 'npm:@orama/oramacore-events-parser@0.0.5'
 import { dedupe } from './index.ts'
 
@@ -61,6 +64,7 @@ interface NLPStreamStateChangedEvent {
 
 interface NLPStreamSearchResultsEvent {
   type: 'search_results'
+  // deno-lint-ignore no-explicit-any
   results: any[]
 }
 
@@ -75,9 +79,18 @@ export type LLMConfig = {
   model: string
 }
 
+export type EnumStrategyStringLength = `string(${number})`
+
+export type EnumStrategy = 'explicit' | EnumStrategyStringLength
+
+export type TypeStrategy = {
+  enum?: EnumStrategy
+}
+
 export type CreateIndexParams = {
   id?: string
   embeddings?: 'automatic' | 'all_properties' | string[]
+  typeStrategy?: TypeStrategy
 }
 
 const DEFAULT_READER_URL = 'https://collections.orama.com'
@@ -111,6 +124,7 @@ export class CollectionManager {
   public tools: ToolsNamespace
   public identity: IdentityNamespace
   public trainingSets: TrainingSetsNamespace
+  public mcp: MCPNamespace
 
   constructor(config: CollectionManagerConfig) {
     let auth: Auth
@@ -155,11 +169,18 @@ export class CollectionManager {
     this.tools = new ToolsNamespace(this.client, this.collectionID)
     this.identity = new IdentityNamespace(this.profile)
     this.trainingSets = new TrainingSetsNamespace(this.client, this.collectionID)
+    this.mcp = new MCPNamespace(this.client, this.collectionID)
   }
 
   public async search<R = AnyObject>(query: SearchParams, init?: ClientRequestInit): Promise<SearchResult<R>> {
     const start = Date.now()
-    const { datasourceIDs, indexes, ...restQuery } = query
+    const { datasourceIDs, indexes, groupBy, ...restQuery } = query
+
+    // Extract sortBy from groupBy (client-side only, not sent to backend)
+    const groupsSortBy = groupBy?.sortBy
+    const groupByForApi = groupBy
+      ? { properties: groupBy.properties, max_results: groupBy.max_results }
+      : undefined
 
     const result = await this.client.request<Omit<SearchResult<R>, 'elapsed'>>({
       path: `/v1/collections/${this.collectionID}/search`,
@@ -167,6 +188,7 @@ export class CollectionManager {
         userID: this.profile?.getUserId() || undefined,
         ...restQuery, // restQuery can override `userID`
         indexes: datasourceIDs || indexes,
+        groupBy: groupByForApi,
       },
       method: 'POST',
       params: undefined,
@@ -174,6 +196,15 @@ export class CollectionManager {
       apiKeyPosition: 'query-params',
       target: 'reader',
     })
+
+    // Sort groups by score of first element if requested
+    if (groupsSortBy === 'score' && result.groups) {
+      result.groups.sort((a, b) => {
+        const scoreA = a.result[0]?.score ?? 0
+        const scoreB = b.result[0]?.score ?? 0
+        return scoreB - scoreA // Descending order
+      })
+    }
 
     const elapsed = Date.now() - start
 
@@ -198,18 +229,53 @@ class AINamespace {
     this.profile = profile
   }
 
-  public NLPSearch<R = AnyObject>(params: NLPSearchParams, init?: ClientRequestInit): Promise<NLPSearchResult<R>[]> {
-    return this.client.request({
+  public async NLPSearch<R = AnyObject>(params: NLPSearchParams, init?: ClientRequestInit): Promise<NLPSearchResult<R>[]> {
+    const body = {
+      llm_config: params.LLMConfig ? { ...params.LLMConfig } : undefined,
+      userID: this.profile?.getUserId() || undefined,
+      messages: [
+        {
+          role: 'user',
+          content: params.query,
+        },
+      ],
+    }
+
+    const response = await this.client.getResponse({
       method: 'POST',
-      path: `/v1/collections/${this.collectionID}/nlp_search`,
-      body: {
-        userID: this.profile?.getUserId() || undefined,
-        ...params,
-      },
+      path: `/v1/collections/${this.collectionID}/generate/nlp_query`,
+      body: body,
       init,
       apiKeyPosition: 'query-params',
       target: 'reader',
     })
+
+    if (!response.body) {
+      throw new Error('No response body')
+    }
+
+    const emitter = parseNLPQueryStream(response.body)
+
+    let finished = false
+    let results: NLPSearchResult<R>[] = []
+
+    emitter.on('search_results', (event: NLPStreamSearchResultsEvent) => {
+      results = event.results
+      finished = true
+    })
+
+    emitter.on('error', (e: NLPStreamErrorEvent) => {
+      if (e.is_terminal) {
+        finished = true
+      }
+      throw new Error(e.error)
+    })
+
+    while (!finished) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+
+    return results
   }
 
   public async *NLPSearchStream<R = AnyObject>(
@@ -306,8 +372,8 @@ class CollectionsNamespace {
     this.collectionID = collectionID
   }
 
-  public getStats(collectionID: string, init?: ClientRequestInit): Promise<AnyObject> {
-    return this.client.request<AnyObject>({
+  public getStats(collectionID: string, init?: ClientRequestInit): Promise<CollectionStats> {
+    return this.client.request<CollectionStats>({
       path: `/v1/collections/${collectionID}/stats`,
       method: 'GET',
       init,
@@ -341,6 +407,28 @@ class IndexNamespace {
     const body: AnyObject = {
       id: config.id,
       embedding: config.embeddings,
+    }
+
+    if (config?.typeStrategy?.enum) {
+      const enumStrategy = config.typeStrategy.enum
+
+      if (enumStrategy === 'explicit') {
+        body.type_strategy = {
+          enum_strategy: 'Explicit',
+        }
+      } else {
+        const match = enumStrategy.match(/^string\((\d+)\)$/)
+        if (match) {
+          const length = parseInt(match[1], 10)
+          body.type_strategy = {
+            enum_strategy: {
+              StringLength: length,
+            },
+          }
+        } else {
+          throw new Error('Invalid enum strategy format. Use "explicit" or "string(N)" where N is a number.')
+        }
+      }
     }
 
     await this.client.request<void>({
@@ -403,7 +491,7 @@ class HooksNamespace {
     }
   }
 
-  public async list(init?: ClientRequestInit) {
+  public async list(init?: ClientRequestInit): Promise<Record<Hook, string | null>> {
     const res = await this.client.request<{ hooks: Record<Hook, string | null> }>({
       path: `/v1/collections/${this.collectionID}/hooks/list`,
       method: 'GET',
@@ -431,6 +519,72 @@ class HooksNamespace {
   }
 }
 
+class PinningRulesNamespace {
+  private client: Client
+  private collectionID: string
+  private indexID: string
+
+  constructor(client: Client, collectionID: string, indexID: string) {
+    this.client = client
+    this.collectionID = collectionID
+    this.indexID = indexID
+  }
+
+  public insert(rule: PinningRuleInsertObject): Promise<{ success: boolean }> {
+    if (!rule.id) {
+      rule.id = createRandomString(32)
+    }
+
+    return this.client.request<{ success: true }>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/insert`,
+      body: rule,
+      method: 'POST',
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public update(rule: PinningRuleInsertObject): Promise<{ success: boolean }> {
+    if (!rule.id) {
+      rule.id = createRandomString(32)
+    }
+
+    return this.insert(rule)
+  }
+
+  public async list(): Promise<PinningRule[]> {
+    const results = await this.client.request<{ data: PinningRule[] }>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/list`,
+      method: 'GET',
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+
+    return results.data
+  }
+
+  public listIDs(): Promise<string[]> {
+    return this.client.request<string[]>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/ids`,
+      method: 'GET',
+      apiKeyPosition: 'query-params',
+      target: 'reader',
+    })
+  }
+
+  public delete(id: string): Promise<{ success: boolean }> {
+    return this.client.request<{ success: true }>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/delete`,
+      method: 'POST',
+      body: {
+        pin_rule_id_to_delete: id,
+      },
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+}
+
 class LogsNamespace {
   private client: Client
   private collectionID: string
@@ -440,7 +594,7 @@ class LogsNamespace {
     this.collectionID = collectionID
   }
 
-  public stream(init?: ClientRequestInit) {
+  public stream(init?: ClientRequestInit): Promise<EventSource> {
     return this.client.eventSource({
       path: `/v1/collections/${this.collectionID}/logs`,
       method: 'GET',
@@ -541,7 +695,7 @@ class ToolsNamespace {
     this.collectionID = collectionID
   }
 
-  public insert(tool: InsertToolBody, init?: ClientRequestInit) {
+  public insert(tool: InsertToolBody, init?: ClientRequestInit): Promise<void> {
     let parameters: string
 
     switch (true) {
@@ -780,11 +934,19 @@ export class Index {
   private indexID: string
   private collectionID: string
   private oramaInterface: Client
+  public transaction: Transaction
+  public pinningRules: PinningRulesNamespace
 
   constructor(oramaInterface: Client, collectionID: string, indexID: string) {
     this.indexID = indexID
     this.collectionID = collectionID
     this.oramaInterface = oramaInterface
+    this.transaction = new Transaction(oramaInterface, collectionID, indexID)
+    this.pinningRules = new PinningRulesNamespace(oramaInterface, collectionID, indexID)
+  }
+
+  public getIndexID(): string {
+    return this.indexID
   }
 
   public async reindex(init?: ClientRequestInit): Promise<void> {
@@ -797,10 +959,10 @@ export class Index {
     })
   }
 
-  public async insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<void> {
+  public async insertDocuments<T = AnyObject | AnyObject[]>(documents: T, init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/insert`,
-      body: { documents: Array.isArray(documents) ? documents : [documents] },
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/insert`,
+      body: Array.isArray(documents) ? documents : [documents],
       method: 'POST',
       init,
       apiKeyPosition: 'header',
@@ -810,8 +972,8 @@ export class Index {
 
   public async deleteDocuments(documentIDs: string | string[], init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/delete`,
-      body: { document_ids: Array.isArray(documentIDs) ? documentIDs : [documentIDs] },
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/delete`,
+      body: Array.isArray(documentIDs) ? documentIDs : [documentIDs],
       method: 'POST',
       init,
       apiKeyPosition: 'header',
@@ -819,14 +981,140 @@ export class Index {
     })
   }
 
-  public async upsertDocuments(documents: AnyObject[], init?: ClientRequestInit): Promise<void> {
+  public async upsertDocuments<T = AnyObject[]>(documents: T, init?: ClientRequestInit): Promise<void> {
     await this.oramaInterface.request<void>({
       path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/documents/upsert`,
-      body: { documents },
+      body: {
+        strategy: 'merge',
+        documents: documents as AnyObject[],
+      },
       method: 'POST',
       init,
       apiKeyPosition: 'header',
       target: 'writer',
+    })
+  }
+
+  public async createTemporaryIndex(
+    temp_index_id?: string,
+    init?: ClientRequestInit,
+  ): Promise<string> {
+    const new_temp_index_id = temp_index_id ?? `temp_${createRandomString(32)}`
+
+    await this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/create-temporary-index`,
+      method: 'POST',
+      body: {
+        id: new_temp_index_id,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+
+    return new_temp_index_id
+  }
+
+  public async swapTemporaryIndex(
+    target_index_id: string,
+    temp_index_id: string,
+    init?: ClientRequestInit,
+  ) {
+    await this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/replace-index`,
+      method: 'POST',
+      body: {
+        target_index_id,
+        temp_index_id,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+}
+
+export class Transaction {
+  private indexID: string
+  private collectionID: string
+  private tempIndexID: string
+  private oramaInterface: Client
+
+  constructor(oramaInterface: Client, collectionID: string, indexID: string, tempIndexID: string = createRandomString(16)) {
+    this.oramaInterface = oramaInterface
+    this.collectionID = collectionID
+    this.indexID = indexID
+    this.tempIndexID = tempIndexID
+  }
+
+  public open(init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/create-temporary-index`,
+      method: 'POST',
+      body: {
+        id: this.tempIndexID,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public insertDocuments(documents: AnyObject | AnyObject[], init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.tempIndexID}/insert`,
+      body: Array.isArray(documents) ? documents : [documents],
+      method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public commit(init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/replace-index`,
+      method: 'POST',
+      body: {
+        target_index_id: this.indexID,
+        temp_index_id: this.tempIndexID,
+      },
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public rollback(init?: ClientRequestInit): Promise<void> {
+    return this.oramaInterface.request<void>({
+      path: `/v1/collections/${this.collectionID}/indexes/${this.tempIndexID}/delete`,
+      method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+}
+
+export class MCPNamespace {
+  private client: Client
+  private collectionID: string
+
+  constructor(client: Client, collectionID: string) {
+    this.client = client
+    this.collectionID = collectionID
+  }
+
+  public updateDescription(newDescription: string, init?: ClientRequestInit): Promise<void> {
+    return this.client.request<void>({
+      method: 'PUT',
+      target: 'writer',
+      apiKeyPosition: 'header',
+      init,
+      path: `/v1/collections/${this.collectionID}/mcp/update`,
+      body: {
+        mcp_description: newDescription,
+      },
     })
   }
 }

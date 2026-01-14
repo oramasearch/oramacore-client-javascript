@@ -93,7 +93,7 @@ export class Auth {
 
 export type ClientRequest = {
   target: 'reader' | 'writer'
-  method: 'GET' | 'POST'
+  method: 'GET' | 'POST' | 'PUT'
   path: string
   body?: object
   params?: Record<string, string>
@@ -123,9 +123,7 @@ export class Client {
         text = `Unable to got response body ${e}`
       }
       throw new Error(
-        `Request to "${req.path}?${
-          new URLSearchParams(req.params ?? {}).toString()
-        }" failed with status ${response.status}: ${text}`,
+        `Request to "${req.path}?${new URLSearchParams(req.params ?? {}).toString()}" failed with status ${response.status}: ${text}`,
       )
     }
 
@@ -142,7 +140,7 @@ export class Client {
     return response.body?.pipeThrough(new EventsStreamTransformer())
   }
 
-  public async eventSource(req: ClientRequest) {
+  public async eventSource(req: ClientRequest): Promise<EventSource> {
     if (req.apiKeyPosition !== 'query-params') {
       throw new Error(
         `EventSource only supports apiKeyPosition as 'query-params', but got ${req.apiKeyPosition}`,
@@ -201,7 +199,7 @@ export class Client {
       ...init,
     }
 
-    if (body && method === 'POST') {
+    if (body && (method === 'POST' || method === 'PUT')) {
       requestObject.body = JSON.stringify(body)
     }
 
@@ -210,6 +208,7 @@ export class Client {
     }
 
     const response = await fetch(remoteURL, requestObject)
+
     if (response.status === 401) {
       throw new Error(
         `Unauthorized: are you using the correct Api Key?`,

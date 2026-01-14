@@ -51,6 +51,8 @@ export type EmbeddingsModel =
   | 'BGESmall'
   | 'BGEBase'
   | 'BGELarge'
+  | 'MultilingualMiniLML12V2'
+  | 'JnaEmbeddingsV2BaseCode'
 
 export type EmbeddingsConfig = {
   model: Nullable<EmbeddingsModel>
@@ -60,6 +62,8 @@ export type EmbeddingsConfig = {
 export type Hook = 'BeforeAnswer' | 'BeforeRetrieval'
 
 export type SearchMode = 'fulltext' | 'vector' | 'hybrid' | 'auto'
+
+export type GroupsSortBy = 'default' | 'score'
 
 export type SearchParams = {
   term: string
@@ -71,10 +75,13 @@ export type SearchParams = {
   facets?: AnyObject
   indexes?: string[]
   datasourceIDs?: string[]
+  boost?: { [key: string]: number }
   exact?: boolean
   threshold?: number
+  similarity?: number
   tolerance?: number
   userID?: string
+  groupBy?: { properties: string[]; max_results?: number; sortBy?: GroupsSortBy }
 }
 
 export type OramaCloudSearchParams = Omit<SearchParams, 'indexes'> & { datasources?: string[] }
@@ -90,6 +97,10 @@ export type SearchResult<T = AnyObject> = {
   count: number
   hits: Hit<T>[]
   facets?: AnyObject
+  groups?: {
+    values: string[]
+    result: Hit<T>[]
+  }[]
   elapsed: {
     raw: number
     formatted: string
@@ -305,3 +316,64 @@ export type TrainingSetQueryOptimizer = {
 }
 
 export type TrainingSetInsertParameters = TrainingSetQueryOptimizer['queries']
+
+export type PinningRuleAnchoringType = 'is'
+
+export type PinningRuleCondition = {
+  anchoring: PinningRuleAnchoringType
+  pattern: string
+}
+
+export type PinningRuleConsequencePromote = {
+  doc_id: string
+  position: number
+}
+
+export type PinningRule = {
+  id: string
+  conditions: PinningRuleCondition[]
+  consequence: {
+    promote?: PinningRuleConsequencePromote[]
+  }
+}
+
+export type PinningRuleInsertObject = Omit<PinningRule, 'id'> & {
+  id?: string
+}
+
+export type FieldStats = {
+  document_count: number
+  field_id: number
+  field_path: string
+  type: string
+  keys?: Nullable<string[]>
+  keys_count?: number
+}
+
+export type ImplicitEnumTypeStrategy = { StringLength: number }
+export type ExplicitEnumTypeStrategy = 'Explicit'
+export type EnumTypeStrategy = ImplicitEnumTypeStrategy | ExplicitEnumTypeStrategy
+
+export type IndexesStats = {
+  id: string
+  created_at: string
+  updated_at: string
+  default_locale: string
+  document_count: number
+  fields_stats: FieldStats[]
+  is_temp: boolean
+  type_parsing_strategies: {
+    enum_strategy?: EnumTypeStrategy
+  }
+}
+
+export type CollectionStats = {
+  created_at: string
+  default_locale: string
+  description: string
+  mcp_description: Nullable<string>
+  document_count: number
+  embedding_model: string
+  hooks: Hook[]
+  indexes_stats: IndexesStats[]
+}
