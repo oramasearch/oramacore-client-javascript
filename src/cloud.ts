@@ -27,6 +27,7 @@ export class OramaCloud {
   public logs: CollectionManager['logs']
   public systemPrompts: CollectionManager['systemPrompts']
   public tools: CollectionManager['tools']
+  public shelves: CollectionManager['shelves']
 
   constructor(config: ProjectManagerConfig) {
     this.client = new CollectionManager({
@@ -43,6 +44,7 @@ export class OramaCloud {
     this.logs = this.client.logs
     this.systemPrompts = this.client.systemPrompts
     this.tools = this.client.tools
+    this.shelves = this.client.shelves
   }
 
   search(params: OramaCloudSearchParams): Promise<SearchResult> {
