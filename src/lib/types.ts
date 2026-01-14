@@ -84,7 +84,7 @@ export type SearchParams = {
   groupBy?: { properties: string[]; max_results?: number; sortBy?: GroupsSortBy }
 }
 
-export type CloudSearchParams = Omit<SearchParams, 'indexes'> & { datasourceIDs?: string[] }
+export type OramaCloudSearchParams = Omit<SearchParams, 'indexes'> & { datasources?: string[] }
 
 export type Hit<T = AnyObject> = {
   id: string
