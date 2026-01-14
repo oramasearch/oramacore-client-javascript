@@ -1,4 +1,4 @@
-import { ZodType } from 'npm:zod@3.24.3'
+
 
 import type {
   AnyObject,
@@ -33,7 +33,7 @@ import type { ClientConfig, ClientRequestInit } from './common.ts'
 import { Profile } from './profile.ts'
 import { OramaCoreStream } from './stream-manager.ts'
 import { Auth, Client } from './common.ts'
-import { createRandomString, flattenZodSchema, formatDuration } from './lib/utils.ts'
+import { createRandomString, formatDuration } from './lib/utils.ts'
 import { parseNLPQueryStream } from 'npm:@orama/oramacore-events-parser@0.0.5'
 import { dedupe } from './index.ts'
 
@@ -703,17 +703,12 @@ class ToolsNamespace {
         parameters = tool.parameters
         break
       }
-      case tool.parameters instanceof ZodType: {
-        const flattenedSchema = flattenZodSchema(tool.parameters as ZodType)
-        parameters = JSON.stringify(flattenedSchema)
-        break
-      }
       case typeof tool.parameters === 'object': {
         parameters = JSON.stringify(tool.parameters)
         break
       }
       default:
-        throw new Error('Invalid parameters type. Must be string, object or ZodType')
+        throw new Error('Invalid parameters type. Must be string or object')
     }
 
     return this.client.request<void>({
