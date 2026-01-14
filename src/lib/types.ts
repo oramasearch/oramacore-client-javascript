@@ -341,6 +341,20 @@ export type PinningRuleInsertObject = Omit<PinningRule, 'id'> & {
   id?: string
 }
 
+export type Shelf = {
+  id: string
+  doc_ids: string[]
+}
+
+export type ShelfWithDocument = {
+  id: string
+  docs: any[]
+}
+
+export type ShelfInsertObject = Omit<Shelf, 'id'> & {
+  id?: string
+}
+
 export type FieldStats = {
   document_count: number
   field_id: number

@@ -20,6 +20,9 @@ import type {
   ExecuteToolsResult,
   InsertSystemPromptBody,
   InsertToolBody,
+  Shelf,
+  ShelfInsertObject,
+  ShelfWithDocument,
   SystemPrompt,
   SystemPromptValidationResponse,
   Tool,
@@ -125,6 +128,7 @@ export class CollectionManager {
   public identity: IdentityNamespace
   public trainingSets: TrainingSetsNamespace
   public mcp: MCPNamespace
+  public shelves: ShelvesNamespace
 
   constructor(config: CollectionManagerConfig) {
     let auth: Auth
@@ -170,6 +174,7 @@ export class CollectionManager {
     this.identity = new IdentityNamespace(this.profile)
     this.trainingSets = new TrainingSetsNamespace(this.client, this.collectionID)
     this.mcp = new MCPNamespace(this.client, this.collectionID)
+    this.shelves = new ShelvesNamespace(this.client, this.collectionID)
   }
 
   public async search<R = AnyObject>(query: SearchParams, init?: ClientRequestInit): Promise<SearchResult<R>> {
@@ -178,9 +183,7 @@ export class CollectionManager {
 
     // Extract sortBy from groupBy (client-side only, not sent to backend)
     const groupsSortBy = groupBy?.sortBy
-    const groupByForApi = groupBy
-      ? { properties: groupBy.properties, max_results: groupBy.max_results }
-      : undefined
+    const groupByForApi = groupBy ? { properties: groupBy.properties, max_results: groupBy.max_results } : undefined
 
     const result = await this.client.request<Omit<SearchResult<R>, 'elapsed'>>({
       path: `/v1/collections/${this.collectionID}/search`,
@@ -579,6 +582,65 @@ class PinningRulesNamespace {
       body: {
         pin_rule_id_to_delete: id,
       },
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+}
+
+class ShelvesNamespace {
+  private client: Client
+  private collectionID: string
+
+  constructor(client: Client, collectionID: string) {
+    this.client = client
+    this.collectionID = collectionID
+  }
+
+  public insert(shelf: ShelfInsertObject): Promise<{ success: boolean }> {
+    if (!shelf.id) {
+      shelf.id = createRandomString(32)
+    }
+
+    return this.client.request<{ success: true }>({
+      path: `/v1/collections/${this.collectionID}/merchandising/shelves/insert`,
+      body: shelf,
+      method: 'POST',
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+  }
+
+  public update(shelf: ShelfInsertObject): Promise<{ success: boolean }> {
+    return this.insert(shelf)
+  }
+
+  public async get(id: string): Promise<ShelfWithDocument> {
+    const results = await this.client.request<{ data: ShelfWithDocument }>({
+      path: `/v1/collections/${this.collectionID}/merchandising/shelves/${id}/get`,
+      method: 'GET',
+      apiKeyPosition: 'header',
+      target: 'reader',
+    })
+
+    return results.data
+  }
+
+  public async list(): Promise<Shelf[]> {
+    const results = await this.client.request<{ data: Shelf[] }>({
+      path: `/v1/collections/${this.collectionID}/merchandising/shelves/list`,
+      method: 'GET',
+      apiKeyPosition: 'header',
+      target: 'writer',
+    })
+
+    return results.data
+  }
+
+  public delete(id: string): Promise<{ success: boolean }> {
+    return this.client.request<{ success: true }>({
+      path: `/v1/collections/${this.collectionID}/merchandising/shelves/${id}/delete`,
+      method: 'POST',
       apiKeyPosition: 'header',
       target: 'writer',
     })

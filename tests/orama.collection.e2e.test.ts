@@ -2,7 +2,7 @@ import type { ImplicitEnumTypeStrategy, PinningRuleInsertObject } from '../src/l
 
 import { z } from 'npm:zod@3.24.3'
 import { assert, assertEquals, assertFalse, assertNotEquals } from 'jsr:@std/assert'
-import { CollectionManager, OramaCoreManager } from '../src/index.ts'
+import { CollectionManager, OramaCoreManager, ShelfInsertObject, ShelfWithDocument } from '../src/index.ts'
 import { createRandomString } from '../src/lib/utils.ts'
 
 const manager = new OramaCoreManager({
@@ -407,6 +407,7 @@ Deno.test('CollectionManager: can handle pinning rules', async () => {
 
   await collectionManager.index.create({
     id: newIndexId,
+    embeddings: 'all_properties',
   })
 
   const index = collectionManager.index.set(newIndexId)
@@ -454,6 +455,50 @@ Deno.test('CollectionManager: can handle pinning rules', async () => {
   await index.pinningRules.delete('test_rule')
 
   const newRules = await index.pinningRules.list()
+  assertEquals(newRules.length, 0)
+})
+
+Deno.test('CollectionManager: can handle shelves', async () => {
+  const newIndexId = createRandomString(32)
+
+  await collectionManager.index.create({
+    id: newIndexId,
+    embeddings: 'all_properties',
+  })
+
+  const index = collectionManager.index.set(newIndexId)
+
+  await index.insertDocuments([
+    { id: '1', name: 'Blue Jeans' },
+    { id: '2', name: 'Red T-Shirt' },
+    { id: '3', name: 'Green Hoodie' },
+    { id: '4', name: 'Yellow Socks' },
+  ])
+
+  const shelf: ShelfInsertObject = {
+    id: 'test_shelf',
+    doc_ids: ['1', '3'],
+  }
+
+  await collectionManager.shelves.insert(shelf)
+
+  const list = await collectionManager.shelves.list()
+  assertEquals(list.length, 1)
+  assertEquals(list[0], {
+    id: 'test_shelf',
+    doc_ids: ['1', '3'],
+  })
+
+  const result = await collectionManager.shelves.get('test_shelf')
+  assertEquals(result.id, 'test_shelf')
+  assertEquals(result.docs, [
+    { id: '1', name: 'Blue Jeans' },
+    { id: '3', name: 'Green Hoodie' },
+  ])
+
+  await collectionManager.shelves.delete('test_shelf')
+
+  const newRules = await collectionManager.shelves.list()
   assertEquals(newRules.length, 0)
 })
 
