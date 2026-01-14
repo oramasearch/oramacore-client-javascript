@@ -74,11 +74,11 @@ export class Auth {
         )
         // NB: This allow us to support at *client side* a way invocation to reader with private api key!!
         if (target == 'reader') {
-          baseURL = this.config.readerURL ?? ret.readerURL
+          baseURL = ret.readerURL ?? this.config.readerURL
           bearer = ret.readerApiKey
         } else {
           bearer = ret.jwt
-          baseURL = this.config.writerURL ?? ret.writerURL
+          baseURL = ret.writerURL ?? this.config.writerURL
         }
         break
       }
