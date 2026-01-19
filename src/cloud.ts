@@ -1,4 +1,4 @@
-import type { AnyObject, SearchParams, SearchResult } from './lib/types.ts'
+import type { AnyObject, SearchResult } from './lib/types.ts'
 import type { Index } from './collection.ts'
 import type { OramaCloudSearchParams } from './lib/types.ts'
 
@@ -27,6 +27,7 @@ export class OramaCloud {
   public systemPrompts: CollectionManager['systemPrompts']
   public tools: CollectionManager['tools']
   public shelves: CollectionManager['shelves']
+  public pinningRules: CollectionManager['pinningRules']
 
   constructor(config: ProjectManagerConfig) {
     this.client = new CollectionManager({
@@ -44,6 +45,7 @@ export class OramaCloud {
     this.systemPrompts = this.client.systemPrompts
     this.tools = this.client.tools
     this.shelves = this.client.shelves
+    this.pinningRules = this.client.pinningRules
   }
 
   search(params: OramaCloudSearchParams): Promise<SearchResult> {
