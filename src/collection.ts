@@ -129,6 +129,7 @@ export class CollectionManager {
   public trainingSets: TrainingSetsNamespace
   public mcp: MCPNamespace
   public shelves: ShelvesNamespace
+  public pinningRules: PinningRulesNamespace
 
   constructor(config: CollectionManagerConfig) {
     let auth: Auth
@@ -175,6 +176,7 @@ export class CollectionManager {
     this.trainingSets = new TrainingSetsNamespace(this.client, this.collectionID)
     this.mcp = new MCPNamespace(this.client, this.collectionID)
     this.shelves = new ShelvesNamespace(this.client, this.collectionID)
+    this.pinningRules = new PinningRulesNamespace(this.client, this.collectionID)
   }
 
   public async search<R = AnyObject>(query: SearchParams, init?: ClientRequestInit): Promise<SearchResult<R>> {
@@ -525,12 +527,10 @@ class HooksNamespace {
 class PinningRulesNamespace {
   private client: Client
   private collectionID: string
-  private indexID: string
 
-  constructor(client: Client, collectionID: string, indexID: string) {
+  constructor(client: Client, collectionID: string) {
     this.client = client
     this.collectionID = collectionID
-    this.indexID = indexID
   }
 
   public insert(rule: PinningRuleInsertObject): Promise<{ success: boolean }> {
@@ -539,7 +539,7 @@ class PinningRulesNamespace {
     }
 
     return this.client.request<{ success: true }>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/insert`,
+      path: `/v1/collections/${this.collectionID}/merchandising/pin_rules/insert`,
       body: rule,
       method: 'POST',
       apiKeyPosition: 'header',
@@ -557,7 +557,7 @@ class PinningRulesNamespace {
 
   public async list(): Promise<PinningRule[]> {
     const results = await this.client.request<{ data: PinningRule[] }>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/list`,
+      path: `/v1/collections/${this.collectionID}/merchandising/pin_rules/list`,
       method: 'GET',
       apiKeyPosition: 'header',
       target: 'writer',
@@ -568,7 +568,7 @@ class PinningRulesNamespace {
 
   public listIDs(): Promise<string[]> {
     return this.client.request<string[]>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/ids`,
+      path: `/v1/collections/${this.collectionID}/merchandising/pin_rules/ids`,
       method: 'GET',
       apiKeyPosition: 'query-params',
       target: 'reader',
@@ -577,7 +577,7 @@ class PinningRulesNamespace {
 
   public delete(id: string): Promise<{ success: boolean }> {
     return this.client.request<{ success: true }>({
-      path: `/v1/collections/${this.collectionID}/indexes/${this.indexID}/pin_rules/delete`,
+      path: `/v1/collections/${this.collectionID}/merchandising/pin_rules/delete`,
       method: 'POST',
       body: {
         pin_rule_id_to_delete: id,
@@ -997,14 +997,12 @@ export class Index {
   private collectionID: string
   private oramaInterface: Client
   public transaction: Transaction
-  public pinningRules: PinningRulesNamespace
 
   constructor(oramaInterface: Client, collectionID: string, indexID: string) {
     this.indexID = indexID
     this.collectionID = collectionID
     this.oramaInterface = oramaInterface
     this.transaction = new Transaction(oramaInterface, collectionID, indexID)
-    this.pinningRules = new PinningRulesNamespace(oramaInterface, collectionID, indexID)
   }
 
   public getIndexID(): string {
