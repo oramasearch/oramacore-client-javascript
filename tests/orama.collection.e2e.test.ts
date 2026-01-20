@@ -1,6 +1,5 @@
 import type { ImplicitEnumTypeStrategy, PinningRuleInsertObject } from '../src/lib/types.ts'
 
-import { z } from 'npm:zod@3.24.3'
 import { assert, assertEquals, assertFalse, assertNotEquals } from 'jsr:@std/assert'
 import { CollectionManager, OramaCoreManager, ShelfInsertObject, ShelfWithDocument } from '../src/index.ts'
 import { createRandomString } from '../src/lib/utils.ts'
@@ -217,10 +216,21 @@ Deno.test('CollectionManager: can insert and retrieve a tool', async () => {
   await collectionManager.tools.insert({
     id: 'run_division',
     description: 'Run a mathematical division',
-    parameters: z.object({
-      dividend: z.number().describe('The number to be divided'),
-      divisor: z.number().describe('The number to divide by'),
-    }),
+    parameters: {
+      type: 'object',
+      properties: {
+        dividend: {
+          type: 'number',
+          description: 'The number to be divided'
+        },
+        divisor: {
+          type: 'number',
+          description: 'The number to divide by'
+        }
+      },
+      required: ['dividend', 'divisor'],
+      additionalProperties: false
+    },
   })
   const retrievedTool = await collectionManager.tools.get('run_division')
 
@@ -236,10 +246,21 @@ Deno.test('CollectionManager: can get all tools', async () => {
   await collectionManager.tools.insert({
     id: 'run_multiplication',
     description: 'Run a mathematical multiplication',
-    parameters: z.object({
-      multiplicand: z.number().describe('The number to be multiplied'),
-      multiplier: z.number().describe('The number to multiply by'),
-    }),
+    parameters: {
+      type: 'object',
+      properties: {
+        multiplicand: {
+          type: 'number',
+          description: 'The number to be multiplied'
+        },
+        multiplier: {
+          type: 'number',
+          description: 'The number to multiply by'
+        }
+      },
+      required: ['multiplicand', 'multiplier'],
+      additionalProperties: false
+    },
   })
 
   const tools = await collectionManager.tools.getAll()
@@ -251,10 +272,21 @@ Deno.test('CollectionManager: can delete a tool', async () => {
   await collectionManager.tools.insert({
     id: 'run_addition',
     description: 'Run a mathematical addition',
-    parameters: z.object({
-      augend: z.number().describe('The first number to be added'),
-      addend: z.number().describe('The second number to be added'),
-    }),
+    parameters: {
+      type: 'object',
+      properties: {
+        augend: {
+          type: 'number',
+          description: 'The first number to be added'
+        },
+        addend: {
+          type: 'number',
+          description: 'The second number to be added'
+        }
+      },
+      required: ['augend', 'addend'],
+      additionalProperties: false
+    },
   })
 
   const result = await collectionManager.tools.delete('run_addition')
@@ -268,19 +300,41 @@ Deno.test.ignore('CollectionManager: can update a tool', async () => {
   await collectionManager.tools.insert({
     id: 'run_subtraction',
     description: 'Run a mathematical subtraction',
-    parameters: z.object({
-      minuend: z.number().describe('The number from which another number is subtracted'),
-      subtrahend: z.number().describe('The number to be subtracted'),
-    }),
+    parameters: {
+      type: 'object',
+      properties: {
+        minuend: {
+          type: 'number',
+          description: 'The number from which another number is subtracted'
+        },
+        subtrahend: {
+          type: 'number',
+          description: 'The number to be subtracted'
+        }
+      },
+      required: ['minuend', 'subtrahend'],
+      additionalProperties: false
+    },
   })
 
   const updatedTool = await collectionManager.tools.update({
     id: 'run_subtraction',
     description: 'Run a mathematical subtraction with updated parameters',
-    parameters: z.object({
-      minuend: z.number().describe('Updated description for the number from which another number is subtracted'),
-      subtrahend: z.number().describe('Updated description for the number to be subtracted'),
-    }),
+    parameters: {
+      type: 'object',
+      properties: {
+        minuend: {
+          type: 'number',
+          description: 'Updated description for the number from which another number is subtracted'
+        },
+        subtrahend: {
+          type: 'number',
+          description: 'Updated description for the number to be subtracted'
+        }
+      },
+      required: ['minuend', 'subtrahend'],
+      additionalProperties: false
+    },
   })
 
   const checkUpdatedTool = await collectionManager.tools.get('run_subtraction')
