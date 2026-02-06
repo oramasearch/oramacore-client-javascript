@@ -221,15 +221,15 @@ Deno.test('CollectionManager: can insert and retrieve a tool', async () => {
       properties: {
         dividend: {
           type: 'number',
-          description: 'The number to be divided'
+          description: 'The number to be divided',
         },
         divisor: {
           type: 'number',
-          description: 'The number to divide by'
-        }
+          description: 'The number to divide by',
+        },
       },
       required: ['dividend', 'divisor'],
-      additionalProperties: false
+      additionalProperties: false,
     },
   })
   const retrievedTool = await collectionManager.tools.get('run_division')
@@ -251,15 +251,15 @@ Deno.test('CollectionManager: can get all tools', async () => {
       properties: {
         multiplicand: {
           type: 'number',
-          description: 'The number to be multiplied'
+          description: 'The number to be multiplied',
         },
         multiplier: {
           type: 'number',
-          description: 'The number to multiply by'
-        }
+          description: 'The number to multiply by',
+        },
       },
       required: ['multiplicand', 'multiplier'],
-      additionalProperties: false
+      additionalProperties: false,
     },
   })
 
@@ -277,15 +277,15 @@ Deno.test('CollectionManager: can delete a tool', async () => {
       properties: {
         augend: {
           type: 'number',
-          description: 'The first number to be added'
+          description: 'The first number to be added',
         },
         addend: {
           type: 'number',
-          description: 'The second number to be added'
-        }
+          description: 'The second number to be added',
+        },
       },
       required: ['augend', 'addend'],
-      additionalProperties: false
+      additionalProperties: false,
     },
   })
 
@@ -305,15 +305,15 @@ Deno.test.ignore('CollectionManager: can update a tool', async () => {
       properties: {
         minuend: {
           type: 'number',
-          description: 'The number from which another number is subtracted'
+          description: 'The number from which another number is subtracted',
         },
         subtrahend: {
           type: 'number',
-          description: 'The number to be subtracted'
-        }
+          description: 'The number to be subtracted',
+        },
       },
       required: ['minuend', 'subtrahend'],
-      additionalProperties: false
+      additionalProperties: false,
     },
   })
 
@@ -325,15 +325,15 @@ Deno.test.ignore('CollectionManager: can update a tool', async () => {
       properties: {
         minuend: {
           type: 'number',
-          description: 'Updated description for the number from which another number is subtracted'
+          description: 'Updated description for the number from which another number is subtracted',
         },
         subtrahend: {
           type: 'number',
-          description: 'Updated description for the number to be subtracted'
-        }
+          description: 'Updated description for the number to be subtracted',
+        },
       },
       required: ['minuend', 'subtrahend'],
-      additionalProperties: false
+      additionalProperties: false,
     },
   })
 

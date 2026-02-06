@@ -1,5 +1,3 @@
-
-
 import type {
   AnyObject,
   CollectionStats,
@@ -762,7 +760,7 @@ class ToolsNamespace {
 
     switch (true) {
       case typeof tool.parameters === 'string': {
-        parameters = tool.parameters
+        parameters = tool.parameters as string
         break
       }
       case typeof tool.parameters === 'object': {

@@ -1,7 +1,5 @@
 import type { Maybe } from './types.ts'
 
-
-
 export const LOCAL_STORAGE_USER_ID_KEY = '___orama_anonymous_user_id'
 export const LOCAL_STORAGE_SERVER_SIDE_SESSION_KEY = '___orama_server_side_session'
 
@@ -114,5 +112,3 @@ export function isServerRuntime() {
   // Default to false if it looks like a browser
   return false
 }
-
-
