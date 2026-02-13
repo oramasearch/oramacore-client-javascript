@@ -69,10 +69,13 @@ interface NLPStreamSearchResultsEvent {
   results: any[]
 }
 
+export type NLPSearchVersion = 'v1' | 'v1.1'
+
 export type NLPSearchParams = {
   query: string
   LLMConfig?: LLMConfig
   userID?: string
+  version?: NLPSearchVersion
 }
 
 export type LLMConfig = {
@@ -244,9 +247,11 @@ class AINamespace {
       ],
     }
 
+    const apiVersion = params.version === 'v1.1' ? 'v1.1' : 'v1'
+
     const response = await this.client.getResponse({
       method: 'POST',
-      path: `/v1/collections/${this.collectionID}/generate/nlp_query`,
+      path: `/${apiVersion}/collections/${this.collectionID}/generate/nlp_query`,
       body: body,
       init,
       apiKeyPosition: 'query-params',
@@ -296,9 +301,11 @@ class AINamespace {
       ],
     }
 
+    const apiVersion = params.version === 'v1.1' ? 'v1.1' : 'v1'
+
     const response = await this.client.getResponse({
       method: 'POST',
-      path: `/v1/collections/${this.collectionID}/generate/nlp_query`,
+      path: `/${apiVersion}/collections/${this.collectionID}/generate/nlp_query`,
       body: body,
       init,
       apiKeyPosition: 'query-params',
