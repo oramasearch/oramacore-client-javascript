@@ -8,6 +8,7 @@ import type {
   Nullable,
   PinningRule,
   PinningRuleInsertObject,
+  RegenerateReadAPIKeyResponse,
   SearchParams,
   SearchResult,
   TrainingSetInsertParameters,
@@ -389,6 +390,16 @@ class CollectionsNamespace {
       init,
       apiKeyPosition: 'query-params',
       target: 'reader',
+    })
+  }
+
+  public regenerateReadAPIKey(init?: ClientRequestInit): Promise<RegenerateReadAPIKeyResponse> {
+    return this.client.request<RegenerateReadAPIKeyResponse>({
+      path: `/v1/collections/${this.collectionID}/regenerate-read-api-key`,
+      method: 'POST',
+      init,
+      apiKeyPosition: 'header',
+      target: 'writer',
     })
   }
 
