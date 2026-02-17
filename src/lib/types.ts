@@ -380,6 +380,10 @@ export type IndexesStats = {
   }
 }
 
+export type RegenerateReadAPIKeyResponse = {
+  read_api_key: string
+}
+
 export type CollectionStats = {
   created_at: string
   default_locale: string
