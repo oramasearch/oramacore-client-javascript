@@ -160,11 +160,13 @@ export class Client {
 
     req.params = req.params ?? {}
     req.params['api-key'] = bearer
+    let eventSourceUrl = remoteURL.toString()
     if (req.params) {
-      remoteURL.search = new URLSearchParams(req.params).toString()
+      const separator = eventSourceUrl.includes('?') ? '&' : '?'
+      eventSourceUrl = `${eventSourceUrl}${separator}${new URLSearchParams(req.params).toString()}`
     }
 
-    return new EventSource(remoteURL)
+    return new EventSource(eventSourceUrl)
   }
 
   async getResponse({
@@ -203,11 +205,14 @@ export class Client {
       requestObject.body = JSON.stringify(body)
     }
 
+    let requestUrl = remoteURL.toString()
     if (params) {
-      remoteURL.search = new URLSearchParams(params).toString()
+      const searchString = new URLSearchParams(params).toString()
+      const separator = requestUrl.includes('?') ? '&' : '?'
+      requestUrl = `${requestUrl}${separator}${searchString}`
     }
 
-    const response = await fetch(remoteURL, requestObject)
+    const response = await fetch(requestUrl, requestObject)
 
     if (response.status === 401) {
       throw new Error(
@@ -217,7 +222,7 @@ export class Client {
     if (response.status === 400) {
       const errorText = await response.text()
       throw new Error(
-        `Bad Request: ${errorText} (path: ${remoteURL.toString()})`,
+        `Bad Request: ${errorText} (path: ${requestUrl})`,
       )
     }
     return response
